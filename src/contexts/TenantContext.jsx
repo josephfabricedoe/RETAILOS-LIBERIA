@@ -193,6 +193,11 @@ export function TenantProvider({ children, currentUser }) {
     };
 
     await setDoc(doc(db, 'businesses', businessId), fullRecord, { merge: true });
+    setCurrentTenantId(businessId);
+    setCurrentTenant(fullRecord);
+    try {
+      localStorage.setItem('retailos_active_tenant_id', businessId);
+    } catch (e) {}
     return fullRecord;
   };
 

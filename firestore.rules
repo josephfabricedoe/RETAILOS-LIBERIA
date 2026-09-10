@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() { 
+      return request.auth != null; 
+    }
+
+    // ==========================================
+    // MULTI-TENANT RETAILOS LIBERIA RULES
+    // ==========================================
+    match /businesses/{businessId} {
+      // Allow public read of store profile & allow self-service registration of new stores
+      allow read, create: if true;
+      allow update, delete: if isAuthenticated();
+
+      // Tenant Products (public read for WhatsApp catalog, authenticated write for POS)
+      match /products/{productId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+
+      // Tenant Sales & Orders (public create for web catalog checkout, auth for POS)
+      match /sales/{saleId} {
+        allow create: if true;
+        allow read, write: if isAuthenticated();
+      }
+
+      // Tenant Customers (public create for web orders, auth for ledger)
+      match /customers/{customerId} {
+        allow create: if true;
+        allow read, write: if isAuthenticated();
+      }
+
+      // Tenant Deliveries
+      match /deliveries/{deliveryId} {
+        allow create: if true;
+        allow read, write: if isAuthenticated();
+      }
+
+      // Tenant Operational Subcollections (authenticated staff)
+      match /expenses/{expenseId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /attendance/{attendanceId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /staff/{staffId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /shifts/{shiftId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /shiftHandovers/{shiftId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /campaigns/{campaignId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /suppliers/{supplierId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /{allSubcollections=**} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // ==========================================
+    // ROOT COLLECTIONS (BACKWARDS COMPATIBILITY)
+    // ==========================================
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    match /sales/{saleId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /customers/{customerId} {
+      allow create: if true;
+      allow read, update, delete: if isAuthenticated();
+    }
+    match /customerTransactions/{transId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /customerPayments/{paymentId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /onlineOrders/{orderId} {
+      allow create: if true;
+      allow read, update, delete: if isAuthenticated();
+    }
+    match /users/{userId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /shiftHandovers/{handoverId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /reconciliations/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /expenses/{expenseId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /attendance/{attendanceId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /deliveries/{deliveryId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /storeSettings/{docId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    match /suppliers/{supplierId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /restockOrders/{orderId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /marketingCampaigns/{campaignId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

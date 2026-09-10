@@ -86,6 +86,17 @@ export default function App() {
             window.location.hash = '#login';
             setCurrentView('login');
           }}
+          onGoToLogin={() => {
+            window.location.hash = '#login';
+            setCurrentView('login');
+          }}
+          onStoreRegistered={(newStore) => {
+            if (newStore?.businessId) {
+              switchTenant(newStore.businessId);
+            }
+            window.location.hash = '#workspace';
+            setCurrentView('workspace');
+          }}
           onEnterDemo={(storeId) => {
             if (storeId) switchTenant(storeId);
             setCurrentView('workspace');
