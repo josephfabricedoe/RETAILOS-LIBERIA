@@ -37,8 +37,49 @@ export const DEFAULT_DEMO_BUSINESS = {
   createdAt: new Date().toISOString().slice(0, 10),
 };
 
+export const WD_MEN_FASHION = {
+  businessId: 'biz_wd_men_fashion',
+  businessName: 'WD Men Fashion',
+  slug: 'wd-men-fashion',
+  businessType: 'Boutique & Fashion',
+  ownerName: 'Wilcom Duncan',
+  ownerEmail: 'wilcom@wd.com',
+  ownerPhone: '0770430269',
+  terminalEmail: 'pos_wd_men_fashion@retailos.lr',
+  logoUrl: '',
+  themeColor: '#10b981', // Clean emerald green
+  currencyMode: 'dual',
+  primaryCurrency: 'USD',
+  primarySymbol: '$',
+  secondaryCurrency: 'LRD',
+  secondarySymbol: 'L$',
+  defaultCurrency: 'USD',
+  exchangeRate: 198,
+  fxRate: 198,
+  address: 'Randall Street, Waterside, Monrovia, Liberia',
+  phone: '0770430269',
+  whatsappNumber: '231770430269',
+  subscriptionPlan: 'starter',
+  subscriptionStatus: 'active',
+  trialEndsAt: '2026-12-31',
+  createdAt: new Date().toISOString().slice(0, 10),
+};
+
+const getLocalTenants = () => {
+  try {
+    const raw = localStorage.getItem('retailos_local_tenants');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
 export function TenantProvider({ children, currentUser }) {
-  const [allTenants, setAllTenants] = useState([]);
+  const [allTenants, setAllTenants] = useState(() => {
+    const locals = getLocalTenants();
+    return [WD_MEN_FASHION, DEFAULT_DEMO_BUSINESS, ...locals];
+  });
+
   const [currentTenantId, setCurrentTenantId] = useState(() => {
     // 1. Check URL query (?store=slug or ?biz=slug)
     const urlParams = new URLSearchParams(window.location.search);
@@ -51,11 +92,15 @@ export function TenantProvider({ children, currentUser }) {
       if (saved) return saved;
     } catch (e) {}
 
-    return DEFAULT_DEMO_BUSINESS.businessId;
+    return WD_MEN_FASHION.businessId;
   });
 
-  const [currentTenant, setCurrentTenant] = useState(DEFAULT_DEMO_BUSINESS);
-  const [loadingTenants, setLoadingTenants] = useState(true);
+  const [currentTenant, setCurrentTenant] = useState(() => {
+    const initialList = [WD_MEN_FASHION, DEFAULT_DEMO_BUSINESS, ...getLocalTenants()];
+    return initialList.find(b => b.businessId === currentTenantId || b.slug === currentTenantId) || WD_MEN_FASHION;
+  });
+
+  const [loadingTenants, setLoadingTenants] = useState(false);
 
   const isSuperAdmin = currentUser ? isSuperAdminEmail(currentUser.email) : false;
 
@@ -68,30 +113,36 @@ export function TenantProvider({ children, currentUser }) {
         if (!mounted) return;
         if (!snap.empty) {
           const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          setAllTenants(list);
+          // Merge with predefined seeds and local storage
+          const merged = [WD_MEN_FASHION, ...list, ...getLocalTenants()];
+          const unique = Array.from(new Map(merged.map(item => [item.businessId || item.id, item])).values());
+          setAllTenants(unique);
 
           // Find match by businessId or slug or default
-          const found = list.find(b => b.businessId === currentTenantId || b.slug === currentTenantId || b.id === currentTenantId);
+          const found = unique.find(b => b.businessId === currentTenantId || b.slug === currentTenantId || b.id === currentTenantId);
           if (found) {
             setCurrentTenant(found);
-          } else if (list.length > 0) {
-            setCurrentTenant(list[0]);
-            setCurrentTenantId(list[0].businessId || list[0].id);
+          } else if (unique.length > 0) {
+            setCurrentTenant(unique[0]);
+            setCurrentTenantId(unique[0].businessId || unique[0].id);
           }
         } else {
-          // Auto-seed default business if collection is empty
-          try {
-            await setDoc(doc(db, 'businesses', DEFAULT_DEMO_BUSINESS.businessId), DEFAULT_DEMO_BUSINESS, { merge: true });
-            setAllTenants([DEFAULT_DEMO_BUSINESS]);
-            setCurrentTenant(DEFAULT_DEMO_BUSINESS);
-          } catch (e) {
-            console.warn('Tenant seed notice:', e);
-          }
+          const fallbackList = [WD_MEN_FASHION, DEFAULT_DEMO_BUSINESS, ...getLocalTenants()];
+          setAllTenants(fallbackList);
+          setCurrentTenant(fallbackList[0]);
         }
         setLoadingTenants(false);
       },
       (err) => {
-        console.warn('Businesses listener notice:', err);
+        console.warn('Businesses listener notice (offline / quota fallback active):', err);
+        const fallbackList = [WD_MEN_FASHION, DEFAULT_DEMO_BUSINESS, ...getLocalTenants()];
+        setAllTenants(fallbackList);
+        const found = fallbackList.find(b => b.businessId === currentTenantId || b.slug === currentTenantId || b.id === currentTenantId);
+        if (found) {
+          setCurrentTenant(found);
+        } else {
+          setCurrentTenant(fallbackList[0]);
+        }
         setLoadingTenants(false);
       }
     );
@@ -204,12 +255,22 @@ export function TenantProvider({ children, currentUser }) {
       createdAt: new Date().toISOString().slice(0, 10),
     };
 
-    await setDoc(doc(db, 'businesses', businessId), fullRecord, { merge: true });
+    try {
+      await setDoc(doc(db, 'businesses', businessId), fullRecord, { merge: true });
+    } catch (e) {
+      console.warn('Firestore setDoc notice (using local storage fallback):', e);
+    }
+    // Always persist to local storage for offline resilience
+    try {
+      const existing = getLocalTenants();
+      const updated = [fullRecord, ...existing.filter(t => t.businessId !== businessId)];
+      localStorage.setItem('retailos_local_tenants', JSON.stringify(updated));
+      localStorage.setItem('retailos_active_tenant_id', businessId);
+      setAllTenants(prev => [fullRecord, ...prev.filter(t => (t.businessId || t.id) !== businessId)]);
+    } catch (e) {}
+
     setCurrentTenantId(businessId);
     setCurrentTenant(fullRecord);
-    try {
-      localStorage.setItem('retailos_active_tenant_id', businessId);
-    } catch (e) {}
     return fullRecord;
   };
 

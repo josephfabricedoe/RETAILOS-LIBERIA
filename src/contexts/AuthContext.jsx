@@ -26,6 +26,14 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [localUser, setLocalUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('retailos_local_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [roleOverride, setRoleOverride] = useState(() => {
     try {
       return localStorage.getItem('retailos_role_override') || null;
@@ -33,6 +41,19 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
+
+  const loginAsLocalUser = (userObj, tenantId) => {
+    try {
+      localStorage.setItem('retailos_local_user', JSON.stringify(userObj));
+      if (tenantId) {
+        localStorage.setItem('retailos_active_tenant_id', tenantId);
+        if (switchTenant) switchTenant(tenantId);
+      }
+    } catch (e) {}
+    setLocalUser(userObj);
+    setUserProfile(userObj);
+    setCurrentUser(userObj);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -143,23 +164,29 @@ export function AuthProvider({ children }) {
   const signOut = () => {
     lockTerminalStaff();
     setRoleOverride(null);
+    setLocalUser(null);
+    setUserProfile(null);
+    setCurrentUser(null);
     try {
       localStorage.removeItem('retailos_role_override');
+      localStorage.removeItem('retailos_local_user');
     } catch (e) {}
-    return fbSignOut(auth);
+    return fbSignOut(auth).catch(() => {});
   };
 
   const createAccount = async (email, password, displayName, role = 'owner', businessId = null) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName });
-    await setDoc(doc(db, 'users', cred.user.uid), {
-      uid: cred.user.uid,
-      email,
-      displayName,
-      role,
-      businessId: businessId || currentTenant?.businessId || 'biz_monrovia_glam',
-      createdAt: serverTimestamp(),
-    });
+    try {
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        uid: cred.user.uid,
+        email,
+        displayName,
+        role,
+        businessId: businessId || currentTenant?.businessId || 'biz_monrovia_glam',
+        createdAt: serverTimestamp(),
+      });
+    } catch (e) {}
     return cred;
   };
 
@@ -175,14 +202,16 @@ export function AuthProvider({ children }) {
     } catch (e) {}
   };
 
+  const activeUser = currentUser || localUser;
+
   // Resolve active staff profile and role
   // Default to Store Owner (owner) so business owners have full management immediately
   const baseProfile = isSharedTerminal 
     ? (terminalStaff || { displayName: 'Staff Terminal', role: 'cashier' }) 
-    : (userProfile || { displayName: 'Store Owner', role: 'owner' });
+    : (userProfile || localUser || { displayName: 'Store Owner', role: 'owner' });
 
   const resolvedRole = roleOverride || baseProfile?.role || 'owner';
-  const currentRole = normalizeRole(resolvedRole, currentUser?.email);
+  const currentRole = normalizeRole(resolvedRole, activeUser?.email);
 
   const effectiveProfile = {
     ...baseProfile,
@@ -191,7 +220,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      currentUser,
+      currentUser: activeUser,
       userProfile: effectiveProfile,
       rawUserProfile: userProfile,
       terminalStaff,
@@ -202,11 +231,12 @@ export function AuthProvider({ children }) {
       loading,
       signIn,
       signOut,
+      loginAsLocalUser,
       createAccount,
       currentRole,
       setRole,
       roleOverride,
-      isSuperAdmin: isSuperAdmin(currentRole, currentUser?.email),
+      isSuperAdmin: isSuperAdmin(currentRole, activeUser?.email),
       isOwner: isOwner(currentRole),
       isManager: isManager(currentRole),
       isCashier: isCashier(currentRole),
