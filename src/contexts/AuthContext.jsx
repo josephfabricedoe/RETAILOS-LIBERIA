@@ -71,7 +71,7 @@ export function AuthProvider({ children }) {
               uid: user.uid,
               email: user.email,
               displayName: isSuper 
-                ? (user.email.includes('joseph') ? 'Joseph Doe' : 'Malydia Jasay') 
+                ? 'RetailOS Master Admin' 
                 : (user.displayName || user.email?.split('@')[0] || 'Store Owner'),
               role: isSuper ? 'superadmin' : 'owner',
               businessId: isSuper ? 'all' : (currentTenant?.businessId || 'biz_monrovia_glam'),

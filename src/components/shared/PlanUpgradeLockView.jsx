@@ -121,7 +121,7 @@ export default function PlanUpgradeLockView({ moduleId }) {
   const storeName = currentTenant?.businessName || 'My Store';
 
   const waText = encodeURIComponent(
-    `Hello Joseph and Malydia, I am the owner of ${storeName}. I would like to upgrade our RetailOS store from ${currentPlanName} to the ${requiredPlan.name} (${requiredPlan.price}) to unlock ${details.title}.`
+    `Hello RetailOS Liberia Team, I am the owner of ${storeName}. I would like to upgrade our RetailOS store from ${currentPlanName} to the ${requiredPlan.name} (${requiredPlan.price}) to unlock ${details.title}.`
   );
 
   return (
@@ -148,43 +148,59 @@ export default function PlanUpgradeLockView({ moduleId }) {
         </div>
 
         {/* Feature Explanation */}
-        <div className="space-y-4">
-          <p className="text-sm text-slate-300 leading-relaxed">
-            {details.description}
-          </p>
-
-          <div className="bg-slate-850/70 border border-slate-750 rounded-2xl p-4 space-y-2.5">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">What you get when you upgrade:</h4>
-            <ul className="space-y-2 text-xs text-slate-200">
-              {details.benefits.map((b, idx) => (
-                <li key={idx} className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>{b}</span>
-                </li>
-              ))}
-            </ul>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-bold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-3 py-1 rounded-full">
+            <Lock className="w-3.5 h-3.5" />
+            <span>{requiredPlan.name} Feature</span>
           </div>
+          <span className="text-[11px] text-slate-400">
+            Current Plan: <strong className="text-white">{currentPlanName}</strong>
+          </span>
         </div>
 
-        {/* Pricing Comparison */}
-        <div className="p-4 bg-gradient-to-r from-cyan-950/40 via-slate-850 to-blue-950/40 border border-cyan-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* Feature Title & Description */}
+        <div className="space-y-2">
+          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+            {details.title}
+          </h2>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            {details.description}
+          </p>
+        </div>
+
+        {/* What You Get in This Tier */}
+        <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 space-y-3">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+            What your business unlocks on {requiredPlan.name}:
+          </span>
+          <ul className="space-y-2.5">
+            {details.benefits.map((benefit, idx) => (
+              <li key={idx} className="flex items-start gap-2.5 text-xs text-slate-200">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span>{benefit}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Pricing Card Banner */}
+        <div className="p-4 bg-gradient-to-r from-emerald-950/40 via-cyan-950/40 to-slate-900 border border-emerald-500/30 rounded-2xl flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-cyan-400" />
-              <span className="font-bold text-white text-sm">{requiredPlan.name}</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">{requiredPlan.description}</p>
+            <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">
+              Flexible Monthly Plan
+            </span>
+            <span className="text-lg font-black text-white">{requiredPlan.name}</span>
           </div>
-          <div className="text-left sm:text-right shrink-0">
-            <span className="text-2xl font-black text-white">{requiredPlan.price}</span>
+          <div className="text-right">
+            <span className="text-2xl font-black text-emerald-400">{requiredPlan.price}</span>
             <span className="text-[10px] text-slate-400 block">No contract · Cancel anytime</span>
           </div>
         </div>
 
-        {/* Call to Action: Joseph & Malydia Support Hotline */}
+        {/* Call to Action: RetailOS Liberia Support Line */}
         <div className="space-y-3 pt-2">
           <p className="text-xs text-center text-slate-400">
-            Contact platform founders <strong className="text-white">Joseph Doe</strong> & <strong className="text-white">Malydia Jasay</strong> to activate your upgrade. They will switch on your new features immediately from the Master Admin Console:
+            Contact the <strong className="text-white">RetailOS Liberia Team</strong> to activate your upgrade. Our team will switch on your new features immediately from the Master Admin Console:
           </p>
 
           <div className="flex flex-col sm:flex-row items-stretch gap-3">
@@ -195,7 +211,7 @@ export default function PlanUpgradeLockView({ moduleId }) {
               className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
             >
               <MessageCircle className="w-4 h-4" />
-              <span>WhatsApp Joseph & Malydia to Upgrade</span>
+              <span>WhatsApp RetailOS Team to Upgrade</span>
             </a>
 
             <a

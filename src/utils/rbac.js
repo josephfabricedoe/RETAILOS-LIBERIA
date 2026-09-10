@@ -1,7 +1,7 @@
 /**
  * RetailOS Liberia - Role-Based Access Control (RBAC) & Multi-Tenant Authority System
  * 
- * 1. Super Admin ('superadmin'): Platform Founders & System Master Admins (Joseph Doe & Malydia Jasay).
+ * 1. Super Admin ('superadmin'): RetailOS Liberia Team & System Master Admins.
  *    Unrestricted access across all tenant businesses, platform dashboard, subscription billing, and tenant switching.
  * 2. Store Owner / CEO ('owner'): Master authority for their specific business.
  *    Restock, Suppliers, Staff Salaries/PINs, Store Settings, Financial Controls.
@@ -12,8 +12,8 @@
  */
 
 export const SUPERADMIN_EMAILS = [
-  'josephfabricedoe@gmail.com',  // Joseph Doe (Platform Founder & Lead Engineer)
-  'jambeautystorelib@gmail.com',  // Malydia Jasay (Platform Co-Founder & Executive Director)
+  'josephfabricedoe@gmail.com',  // RetailOS Master Admin
+  'jambeautystorelib@gmail.com',  // RetailOS Master Admin
 ];
 
 export function isSuperAdminEmail(email) {

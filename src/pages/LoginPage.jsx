@@ -333,7 +333,7 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
                     type="text"
                     value={signupOwnerName}
                     onChange={e => setSignupOwnerName(e.target.value)}
-                    placeholder="e.g. Joseph Kollie"
+                    placeholder="e.g. Fatu Johnson"
                     required
                     className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
                   />

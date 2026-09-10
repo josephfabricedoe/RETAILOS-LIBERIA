@@ -153,7 +153,7 @@ export default function SuperAdminDashboard({ onEnterStore }) {
             </span>
           </h1>
           <p className="text-sm text-slate-400">
-            Platform Owners: <span className="text-white font-medium">Joseph Doe</span> & <span className="text-white font-medium">Malydia Jasay</span> · Empowering retail across Liberia
+            Platform Management: <span className="text-white font-medium">RetailOS Liberia Team</span> · Empowering retail across Liberia
           </p>
         </div>
 

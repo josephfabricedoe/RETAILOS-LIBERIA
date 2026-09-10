@@ -222,13 +222,13 @@ Please confirm order availability and fulfillment timeline!`;
                   <span>Sign In to Upgrade Plan</span>
                 </button>
                 <a
-                  href="https://wa.me/231770430269?text=Hello%20Joseph%20and%20Malydia,%20I%20want%20to%20upgrade%20my%20store%20to%20Enterprise%20Plan%20($39.99/mo)%20to%20unlock%20the%20public%20online%20storefront."
+                  href="https://wa.me/231770430269?text=Hello%20RetailOS%20Liberia%20Team,%20I%20want%20to%20upgrade%20my%20store%20to%20Enterprise%20Plan%20($39.99/mo)%20to%20unlock%20the%20public%20online%20storefront."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition flex items-center justify-center gap-2"
                 >
                   <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Contact Platform Support (0770430269)</span>
+                  <span>Contact RetailOS Support (0770430269)</span>
                 </a>
               </div>
             </div>
