@@ -23,7 +23,7 @@ const STORE_TYPES = [
 
 export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
   const { signIn } = useAuth();
-  const { currentTenant, switchTenant } = useTenant();
+  const { currentTenant } = useTenant();
   
   // Tab Mode: 'signin' or 'signup'
   const [mode, setMode] = useState('signin');
@@ -106,7 +106,7 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
         ownerEmail: signupEmail.trim(),
         ownerPhone: signupPhone.trim(),
         terminalEmail: `pos_${slug}@retailos.lr`,
-        themeColor: '#0ea5e9',
+        themeColor: '#10b981',
         currencyMode: signupCurrencyMode,
         primaryCurrency: signupPrimaryCurrency,
         primarySymbol: primaryObj?.symbol || '$',
@@ -119,33 +119,69 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
         address: 'Monrovia, Liberia',
         phone: signupPhone.trim(),
         whatsappNumber: signupPhone.replace(/[^0-9]/g, ''),
-        createdAt: new Date().toISOString().slice(0, 10),
-      };
-
-      await setDoc(doc(db, 'businesses', businessId), newBusinessRecord, { merge: true });
-
-      // 4. Create User Profile with role: 'owner'
-      const newUserProfile = {
-        uid,
-        email: signupEmail.trim(),
-        displayName: signupOwnerName.trim(),
-        role: 'owner', // Full Store Owner Role
-        businessId,
         createdAt: serverTimestamp(),
       };
 
-      await setDoc(doc(db, 'users', uid), newUserProfile, { merge: true });
+      await setDoc(doc(db, 'businesses', businessId), newBusinessRecord);
 
-      // 5. Activate workspace
-      if (switchTenant) {
-        switchTenant(businessId);
+      // 4. Create User Profile linking to new business
+      await setDoc(doc(db, 'users', uid), {
+        uid,
+        email: signupEmail.trim(),
+        displayName: signupOwnerName.trim(),
+        role: 'owner', // Full Store Owner Access
+        tenantId: businessId,
+        businessName: signupBusinessName.trim(),
+        createdAt: serverTimestamp(),
+      });
+
+      // 5. Populate initial default products so store owner can test immediately
+      const defaultProducts = [
+        {
+          name: 'Classic Men Polo T-Shirt',
+          category: 'Apparel & Fashion',
+          retailPrice: 15.00,
+          wholesalePrice: 12.00,
+          showroomQty: 24,
+          storeroomQty: 50,
+          barcode: '1001',
+          createdAt: serverTimestamp(),
+        },
+        {
+          name: 'Shea Butter Body Lotion 400ml',
+          category: 'Cosmetics & Beauty',
+          retailPrice: 8.50,
+          wholesalePrice: 6.00,
+          showroomQty: 18,
+          storeroomQty: 36,
+          barcode: '1002',
+          createdAt: serverTimestamp(),
+        },
+        {
+          name: 'Paracetamol Tablets 500mg (100s)',
+          category: 'Pharmacy & Healthcare',
+          retailPrice: 4.00,
+          wholesalePrice: 2.50,
+          showroomQty: 30,
+          storeroomQty: 100,
+          barcode: '1003',
+          createdAt: serverTimestamp(),
+        }
+      ];
+
+      for (const prod of defaultProducts) {
+        const prodRef = doc(db, 'businesses', businessId, 'products', `prod_${Date.now()}_${Math.floor(Math.random()*1000)}`);
+        await setDoc(prodRef, prod);
       }
+
+      // Automatically sign in
+      window.location.reload();
     } catch (err) {
-      console.error('Sign-up error:', err);
+      console.error('Registration error:', err);
       const msgs = {
-        'auth/email-already-in-use': 'This email is already registered. Please sign in instead.',
-        'auth/invalid-email': 'Please enter a valid email address.',
+        'auth/email-already-in-use': 'This email is already registered. Please click "Sign In" instead.',
         'auth/weak-password': 'Password should be at least 6 characters.',
+        'auth/invalid-email': 'Invalid email address.',
       };
       setError(msgs[err.code] || err.message || 'Failed to create your store account.');
     } finally {
@@ -154,49 +190,47 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
   };
 
   const storeName = currentTenant?.businessName || 'RetailOS Liberia';
-  const themeColor = currentTenant?.themeColor || '#0ea5e9';
+  const themeColor = currentTenant?.themeColor || '#10b981';
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 selection:bg-cyan-500 selection:text-white">
+    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 selection:bg-emerald-500 selection:text-white font-sans">
       {/* Background ambient lighting */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pointer-events-none" />
-      <div className="fixed top-0 right-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="fixed bottom-0 left-0 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-100/50 via-slate-100 to-slate-100 pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-md">
         {/* Store / Platform Logo */}
         <div className="text-center mb-6">
           <div className="inline-block relative mb-3">
             <div 
-              className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-2xl mx-auto border-2 border-white/20 text-white font-black text-2xl"
+              className="w-16 h-16 rounded-3xl flex items-center justify-center shadow-md mx-auto border-2 border-white text-white font-black text-2xl"
               style={{ backgroundColor: themeColor }}
             >
               {currentTenant?.logoUrl ? (
-                <img src={currentTenant.logoUrl} alt={storeName} className="w-full h-full object-cover rounded-2xl" />
+                <img src={currentTenant.logoUrl} alt={storeName} className="w-full h-full object-cover rounded-3xl" />
               ) : (
                 <Store className="w-8 h-8" />
               )}
             </div>
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight uppercase">
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
             {mode === 'signup' ? 'RetailOS Liberia' : storeName}
           </h1>
-          <p className="text-xs font-semibold uppercase tracking-widest mt-1 text-cyan-400">
+          <p className="text-xs font-bold uppercase tracking-widest mt-1 text-emerald-700">
             {mode === 'signup' ? 'Create Your Store · Free Forever' : (currentTenant?.businessType || 'Cloud POS & Retail OS')}
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl">
+        <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl">
           {/* Tab Switcher */}
-          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-850 rounded-2xl border border-slate-750 mb-5">
+          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200 mb-5">
             <button
               type="button"
               onClick={() => { setMode('signin'); setError(''); }}
               className={`py-2 text-xs font-bold rounded-xl transition-all ${
                 mode === 'signin'
-                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-950 font-semibold'
               }`}
             >
               Sign In
@@ -206,8 +240,8 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
               onClick={() => { setMode('signup'); setError(''); }}
               className={`py-2 text-xs font-bold rounded-xl transition-all ${
                 mode === 'signup'
-                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-950 font-semibold'
               }`}
             >
               Register Free Store
@@ -215,9 +249,9 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
           </div>
 
           {error && (
-            <div className="flex items-start gap-2 bg-red-900/30 border border-red-700/50 rounded-xl p-3 mb-4">
-              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-              <p className="text-red-300 text-xs">{error}</p>
+            <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-xl p-3 mb-4">
+              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+              <p className="text-rose-800 text-xs font-semibold">{error}</p>
             </div>
           )}
 
@@ -225,40 +259,40 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
           {mode === 'signin' ? (
             <form onSubmit={handleSignIn} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="owner@yourstore.com"
                     required
-                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-colors font-medium"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type={showPw ? 'text' : 'password'}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-10 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-colors font-medium"
                   />
                   <button 
                     type="button" 
                     onClick={() => setShowPw(v => !v)} 
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
                   >
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -268,7 +302,7 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 text-sm"
+                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-black py-3 rounded-xl transition-all shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 text-sm"
               >
                 {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
                 {loading ? 'Signing In...' : 'Sign In to Store'}
@@ -278,7 +312,7 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
                 <button
                   type="button"
                   onClick={() => { setMode('signup'); setError(''); }}
-                  className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold"
+                  className="text-xs text-emerald-700 hover:text-emerald-900 font-bold"
                 >
                   New business in Liberia? Register your store free &rarr;
                 </button>
@@ -287,18 +321,18 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
           ) : (
             /* SIGN UP FORM (Free Forever Plan) */
             <form onSubmit={handleSignUp} className="space-y-3.5 text-xs">
-              <div className="p-3 bg-cyan-950/40 border border-cyan-800/50 rounded-2xl space-y-1">
-                <div className="flex items-center gap-1.5 text-cyan-300 font-bold text-xs">
-                  <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1">
+                <div className="flex items-center gap-1.5 text-emerald-900 font-black text-xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   <span>Free Forever Plan ($0/mo)</span>
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-slate-600 font-medium">
                   Full Store Owner access to POS, Showroom inventory, CSV template, and Store settings. No credit card required.
                 </p>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Business / Store Name *
                 </label>
                 <input
@@ -307,26 +341,26 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
                   onChange={e => setSignupBusinessName(e.target.value)}
                   placeholder="e.g. Sinkor Cosmetics, Kollie Supermarket"
                   required
-                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-colors font-medium"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Store Type
                   </label>
                   <select
                     value={signupBusinessType}
                     onChange={e => setSignupBusinessType(e.target.value)}
-                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
                   >
                     {STORE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Store Owner Name *
                   </label>
                   <input
@@ -335,14 +369,14 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
                     onChange={e => setSignupOwnerName(e.target.value)}
                     placeholder="e.g. Fatu Johnson"
                     required
-                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Owner Email (Login) *
                   </label>
                   <input
@@ -351,12 +385,12 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
                     onChange={e => setSignupEmail(e.target.value)}
                     placeholder="owner@store.com"
                     required
-                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Create Password *
                   </label>
                   <input
@@ -366,14 +400,14 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
                     placeholder="Min 6 characters"
                     required
                     minLength={6}
-                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Phone / WhatsApp
                   </label>
                   <input
@@ -381,18 +415,18 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
                     value={signupPhone}
                     onChange={e => setSignupPhone(e.target.value)}
                     placeholder="0770xxxxxx"
-                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Currency Setup
                   </label>
                   <select
                     value={signupCurrencyMode}
                     onChange={e => setSignupCurrencyMode(e.target.value)}
-                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
                   >
                     <option value="dual">Dual Currency (USD + LRD)</option>
                     <option value="single">Single Currency (USD only)</option>
@@ -403,7 +437,7 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 text-sm"
+                className="w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-black py-3 rounded-xl transition-all shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 text-sm"
               >
                 {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                 <span>{loading ? 'Setting Up Your Store...' : 'Create Store & Start Free'}</span>
@@ -414,7 +448,7 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
                 <button
                   type="button"
                   onClick={() => { setMode('signin'); setError(''); }}
-                  className="text-xs text-slate-400 hover:text-white"
+                  className="text-xs text-slate-600 hover:text-slate-900 font-bold"
                 >
                   Already registered? Sign in to your store
                 </button>
@@ -423,14 +457,14 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
           )}
 
           {/* Catalog & Landing quick jumps */}
-          <div className="mt-5 pt-4 border-t border-slate-800 space-y-2">
+          <div className="mt-5 pt-4 border-t border-slate-200 space-y-2">
             {onOpenCatalog && (
               <button
                 type="button"
                 onClick={onOpenCatalog}
-                className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-cyan-300 hover:text-white rounded-xl text-xs font-semibold transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors shadow-2xs"
               >
-                <ShoppingBag className="w-3.5 h-3.5" />
+                <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Browse Storefront Catalog</span>
               </button>
             )}
@@ -439,9 +473,9 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
               <button
                 type="button"
                 onClick={onGoToLanding}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 text-slate-400 hover:text-slate-200 text-xs transition-colors"
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 text-slate-500 hover:text-slate-800 text-xs font-semibold transition-colors"
               >
-                <Sparkles className="w-3 h-3 text-cyan-400" />
+                <Sparkles className="w-3 h-3 text-emerald-600" />
                 <span>About RetailOS Liberia / Platform Overview</span>
               </button>
             )}
@@ -449,13 +483,13 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
         </div>
 
         {/* Footer Support Hotline */}
-        <div className="text-center text-xs text-slate-400 mt-6 space-y-1">
+        <div className="text-center text-xs text-slate-500 mt-6 space-y-1 font-medium">
           <p>
-            Liberia Support & Training: <a href="tel:0770430269" className="font-bold text-emerald-400 hover:underline font-mono">0770430269</a>
-            <span className="mx-1 text-slate-600">·</span>
-            <a href="https://wa.me/231770430269" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">WhatsApp</a>
+            Liberia Support & Training: <a href="tel:0770430269" className="font-bold text-emerald-700 hover:underline font-mono">0770430269</a>
+            <span className="mx-1 text-slate-400">·</span>
+            <a href="https://wa.me/231770430269" target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:underline font-bold">WhatsApp</a>
           </p>
-          <p className="text-slate-600">
+          <p className="text-slate-400 text-[11px]">
             RetailOS Liberia &copy; {new Date().getFullYear()} · Multi-Tenant Retail OS
           </p>
         </div>

@@ -136,11 +136,11 @@ Please confirm order availability and fulfillment timeline!`;
   // -------------------------------------------------------------
   if (!isEnterprise) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col font-sans text-slate-100">
+      <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900">
         {/* Simple Top Navigation */}
-        <header className="bg-slate-950 border-b border-slate-800 px-4 sm:px-8 py-4 flex items-center justify-between">
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 flex items-center justify-between shadow-2xs">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-black text-white text-sm">
+            <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-black text-slate-900 text-sm">
               {storeLogo ? (
                 <img src={storeLogo} alt={storeName} className="w-full h-full object-contain rounded-xl" />
               ) : (
@@ -148,10 +148,10 @@ Please confirm order availability and fulfillment timeline!`;
               )}
             </div>
             <div>
-              <span className="font-extrabold text-white text-sm tracking-tight block">
+              <span className="font-extrabold text-slate-900 text-sm tracking-tight block">
                 {storeName}
               </span>
-              <span className="text-[10px] text-slate-400 block font-medium">
+              <span className="text-[10px] text-slate-500 block font-medium">
                 {storeAddress}
               </span>
             </div>
@@ -160,9 +160,9 @@ Please confirm order availability and fulfillment timeline!`;
           {onOpenStaffLogin && (
             <button
               onClick={onOpenStaffLogin}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition border border-slate-700"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold transition border border-slate-300 shadow-2xs"
             >
-              <LogIn className="w-3.5 h-3.5" />
+              <LogIn className="w-3.5 h-3.5 text-emerald-600" />
               <span>Owner & Staff Sign In</span>
             </button>
           )}
@@ -170,53 +170,53 @@ Please confirm order availability and fulfillment timeline!`;
 
         {/* Hero Notice Card */}
         <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-16 flex flex-col justify-center">
-          <div className="bg-slate-950 border-2 border-slate-800 rounded-3xl p-6 sm:p-10 text-center space-y-6 shadow-2xl">
-            <div className="w-16 h-16 rounded-3xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center mx-auto shadow-inner">
+          <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 sm:p-10 text-center space-y-6 shadow-xl">
+            <div className="w-16 h-16 rounded-3xl bg-purple-50 border border-purple-200 text-purple-700 flex items-center justify-center mx-auto shadow-2xs">
               <Store className="w-8 h-8" />
             </div>
 
             <div className="space-y-2">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-purple-400 bg-purple-950/60 px-3 py-1 rounded-full border border-purple-800/60">
+              <span className="text-[10px] uppercase font-black tracking-widest text-purple-800 bg-purple-50 px-3 py-1 rounded-full border border-purple-200">
                 Enterprise Feature
               </span>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight pt-2">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight pt-2">
                 Online Storefront Coming Soon
               </h1>
-              <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
-                <strong className="text-white">{storeName}</strong> has not yet activated its public digital web storefront.
+              <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed font-medium">
+                <strong className="text-slate-900 font-bold">{storeName}</strong> has not yet activated its public digital web storefront.
               </p>
             </div>
 
             {/* Direct Store Contact */}
-            <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 text-xs space-y-2 text-left">
-              <div className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-2.5 text-left">
+              <div className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">
                 To purchase or check product availability:
               </div>
-              <div className="flex items-center gap-2 text-slate-200">
-                <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>Visit our physical store at <strong>{storeAddress}</strong></span>
               </div>
               {storePhone && (
-                <div className="flex items-center gap-2 text-slate-200">
-                  <Phone className="w-4 h-4 text-cyan-400 shrink-0" />
-                  <span>Call or WhatsApp: <strong className="font-mono">{storePhone}</strong></span>
+                <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                  <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Call or WhatsApp: <strong className="font-mono font-bold text-slate-900">{storePhone}</strong></span>
                 </div>
               )}
             </div>
 
             {/* Store Owner Upgrade Section */}
-            <div className="pt-4 border-t border-slate-800/80 text-left space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
-                <Sparkles className="w-4 h-4" />
+            <div className="pt-4 border-t border-slate-200 text-left space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-700">
+                <Sparkles className="w-4 h-4 text-amber-600" />
                 <span>Are you the store owner of {storeName}?</span>
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                The Public Online Storefront and 1-click WhatsApp customer ordering are exclusive to the <strong className="text-white">Enterprise Plan ($39.99/mo)</strong>. Upgrade your plan to instantly publish your live shelf inventory online.
+              <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                The Public Online Storefront and 1-click WhatsApp customer ordering are exclusive to the <strong className="text-slate-900 font-bold">Enterprise Plan ($39.99/mo)</strong>. Upgrade your plan to instantly publish your live shelf inventory online.
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
                 <button
                   onClick={onOpenStaffLogin}
-                  className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2"
                 >
                   <LogIn className="w-3.5 h-3.5" />
                   <span>Sign In to Upgrade Plan</span>
@@ -225,9 +225,9 @@ Please confirm order availability and fulfillment timeline!`;
                   href="https://wa.me/231770430269?text=Hello%20RetailOS%20Liberia%20Team,%20I%20want%20to%20upgrade%20my%20store%20to%20Enterprise%20Plan%20($39.99/mo)%20to%20unlock%20the%20public%20online%20storefront."
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-2xs"
                 >
-                  <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Contact RetailOS Support (0770430269)</span>
                 </a>
               </div>
@@ -236,14 +236,14 @@ Please confirm order availability and fulfillment timeline!`;
         </main>
 
         {/* Watermark Footer */}
-        <footer className="py-6 px-4 text-center border-t border-slate-800 text-xs text-slate-500">
+        <footer className="py-6 px-4 text-center border-t border-slate-200 bg-white text-xs text-slate-500 font-medium">
           <a
             href="https://retailos-liberia.web.app"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-slate-400 hover:text-white font-semibold transition"
+            className="inline-flex items-center gap-1.5 text-slate-600 hover:text-slate-950 font-bold transition"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <span>Powered by RetailOS Liberia</span>
           </a>
         </footer>
@@ -331,25 +331,25 @@ Please confirm order availability and fulfillment timeline!`;
       </header>
 
       {/* Hero Exchange & Ordering Banner */}
-      <div className="bg-slate-950 text-white py-6 px-4 sm:px-8 border-b border-slate-800">
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white py-6 px-4 sm:px-8 shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <span className="text-[10px] uppercase font-black tracking-widest text-emerald-400 bg-emerald-950/90 px-3 py-1 rounded-full border border-emerald-700/60">
+            <span className="text-[10px] uppercase font-black tracking-widest text-emerald-950 bg-emerald-100 px-3 py-1 rounded-full shadow-2xs">
               Live Showroom Stock
             </span>
             <h2 className="text-xl sm:text-2xl font-black mt-2 tracking-tight text-white">
               Official Digital Catalog & Direct WhatsApp Checkout
             </h2>
-            <p className="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed font-medium">
+            <p className="text-xs text-emerald-50 mt-1 max-w-xl leading-relaxed font-medium">
               Browse current available stock. Tap &ldquo;Add to Bag&rdquo; and your complete order ticket will be dispatched directly to our sales counter on WhatsApp for instant packing.
             </p>
           </div>
 
-          <div className="bg-slate-900 border-2 border-slate-800 px-5 py-3 rounded-2xl text-center shrink-0 shadow-lg">
-            <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">
+          <div className="bg-white/15 backdrop-blur-md border-2 border-white/25 px-5 py-3 rounded-2xl text-center shrink-0 shadow-lg text-white">
+            <span className="text-[10px] text-emerald-100 block uppercase font-bold tracking-wider">
               Counter Exchange Rate
             </span>
-            <span className="font-mono font-black text-base text-emerald-400">
+            <span className="font-mono font-black text-base text-white">
               $1 USD = {fxRate || 198} LRD
             </span>
           </div>

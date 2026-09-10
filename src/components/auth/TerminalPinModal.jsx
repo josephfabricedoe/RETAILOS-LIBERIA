@@ -181,33 +181,33 @@ export default function TerminalPinModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md selection:bg-cyan-500 selection:text-white">
-      <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl flex flex-col items-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md selection:bg-emerald-500 selection:text-white font-sans">
+      <div className="w-full max-w-sm bg-white border-2 border-slate-200 rounded-3xl p-6 sm:p-7 shadow-2xl flex flex-col items-center text-slate-900">
         {/* Store Header */}
         <div className="text-center mb-6">
           <div 
-            className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-xl mx-auto mb-3"
+            className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-md mx-auto mb-3"
             style={{ backgroundColor: themeColor }}
           >
             <Store className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-black text-white tracking-tight uppercase">
+          <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">
             {storeName}
           </h2>
-          <p className="text-xs text-slate-400 font-semibold mt-0.5">
+          <p className="text-xs text-slate-500 font-bold mt-0.5">
             Staff Kiosk · Punch 4-Digit Secret PIN
           </p>
         </div>
 
         {welcomeData ? (
           <div className="w-full py-8 text-center space-y-3 animate-fadeIn">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center mx-auto shadow-2xs">
               <CheckCircle2 className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-white">Welcome, {welcomeData.name}!</h3>
-            <p className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">{welcomeData.role}</p>
-            <p className="text-xs text-slate-400">{welcomeData.clockNotice}</p>
-            <p className="text-[11px] text-slate-500 pt-2">Opening Store Register...</p>
+            <h3 className="text-lg font-black text-slate-900">Welcome, {welcomeData.name}!</h3>
+            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">{welcomeData.role}</p>
+            <p className="text-xs text-slate-600 font-medium">{welcomeData.clockNotice}</p>
+            <p className="text-[11px] text-slate-400 font-semibold pt-2">Opening Store Register...</p>
           </div>
         ) : (
           <div className="w-full space-y-5">
@@ -220,8 +220,8 @@ export default function TerminalPinModal() {
                     key={idx}
                     className={`w-4 h-4 rounded-full transition-all duration-200 ${
                       filled
-                        ? 'bg-cyan-400 scale-125 shadow-md shadow-cyan-400/50'
-                        : 'border-2 border-slate-700 bg-slate-800'
+                        ? 'bg-emerald-600 scale-125 shadow-md shadow-emerald-600/40'
+                        : 'border-2 border-slate-300 bg-slate-100'
                     }`}
                   />
                 );
@@ -229,7 +229,7 @@ export default function TerminalPinModal() {
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-red-900/30 border border-red-700/50 rounded-xl text-red-300 text-xs text-center justify-center">
+              <div className="flex items-center gap-2 px-3 py-2 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs text-center justify-center font-bold">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{error}</span>
               </div>
@@ -242,7 +242,7 @@ export default function TerminalPinModal() {
                   key={num}
                   type="button"
                   onClick={() => handleDigit(String(num))}
-                  className="h-14 rounded-2xl bg-slate-800 hover:bg-slate-750 active:bg-cyan-500 active:text-slate-950 text-white font-extrabold text-xl transition-colors border border-slate-700/60 shadow-xs flex items-center justify-center"
+                  className="h-14 rounded-2xl bg-slate-50 hover:bg-slate-100 active:bg-emerald-600 active:text-white text-slate-900 font-black text-xl transition-colors border-2 border-slate-200 shadow-2xs flex items-center justify-center"
                 >
                   {num}
                 </button>
@@ -251,7 +251,7 @@ export default function TerminalPinModal() {
               <button
                 type="button"
                 onClick={handleClear}
-                className="h-14 rounded-2xl bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-bold transition-colors border border-slate-700/40 flex items-center justify-center"
+                className="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition-colors border border-slate-200 flex items-center justify-center"
               >
                 CLEAR
               </button>
@@ -259,7 +259,7 @@ export default function TerminalPinModal() {
               <button
                 type="button"
                 onClick={() => handleDigit('0')}
-                className="h-14 rounded-2xl bg-slate-800 hover:bg-slate-750 active:bg-cyan-500 active:text-slate-950 text-white font-extrabold text-xl transition-colors border border-slate-700/60 shadow-xs flex items-center justify-center"
+                className="h-14 rounded-2xl bg-slate-50 hover:bg-slate-100 active:bg-emerald-600 active:text-white text-slate-900 font-black text-xl transition-colors border-2 border-slate-200 shadow-2xs flex items-center justify-center"
               >
                 0
               </button>
@@ -267,18 +267,18 @@ export default function TerminalPinModal() {
               <button
                 type="button"
                 onClick={handleBackspace}
-                className="h-14 rounded-2xl bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors border border-slate-700/40 flex items-center justify-center"
+                className="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors border border-slate-200 flex items-center justify-center"
               >
                 <Delete className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="pt-2 flex items-center justify-between text-xs text-slate-500">
+            <div className="pt-2 flex items-center justify-between text-xs text-slate-500 font-medium">
               <span>Demo PIN: <strong>1234</strong></span>
               <button
                 type="button"
                 onClick={signOut}
-                className="text-red-400 hover:text-red-300 flex items-center gap-1 font-semibold"
+                className="text-rose-600 hover:text-rose-700 flex items-center gap-1 font-bold"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Exit Kiosk</span>

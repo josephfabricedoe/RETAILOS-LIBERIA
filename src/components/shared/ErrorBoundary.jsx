@@ -36,18 +36,18 @@ export default class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center">
-          <div className="max-w-md w-full bg-slate-900 border border-slate-800 p-8 rounded-3xl space-y-4 shadow-2xl">
-            <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto">
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6 text-center font-sans text-slate-900">
+          <div className="max-w-md w-full bg-white border-2 border-slate-200 p-8 rounded-3xl space-y-4 shadow-xl">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-2xs">
               <AlertTriangle className="w-7 h-7" />
             </div>
-            <h2 className="text-xl font-bold text-white">Something Went Wrong</h2>
-            <p className="text-xs text-slate-400">
+            <h2 className="text-xl font-black text-slate-900">Something Went Wrong</h2>
+            <p className="text-xs text-slate-600 font-medium">
               The application encountered an unexpected state. Your local data and sales records remain safe.
             </p>
 
             {this.state.error && (
-              <div className="bg-slate-950 border border-red-900/40 rounded-xl p-3 text-left overflow-auto max-h-32 text-[11px] font-mono text-red-300">
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-left overflow-auto max-h-32 text-[11px] font-mono text-rose-800">
                 {this.state.error?.message || String(this.state.error)}
               </div>
             )}
@@ -56,19 +56,19 @@ export default class ErrorBoundary extends React.Component {
               <button
                 type="button"
                 onClick={this.handleReset}
-                className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
-                <span>Reload Application</span>
+                <span>Reload App</span>
               </button>
 
               <button
                 type="button"
                 onClick={this.handleSignOutAndReset}
-                className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl transition flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow-2xs"
               >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Sign In Page</span>
+                <LogIn className="w-4 h-4" />
+                <span>Sign In Again</span>
               </button>
             </div>
           </div>

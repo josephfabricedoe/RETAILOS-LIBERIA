@@ -54,9 +54,9 @@ export default function App() {
   // Loading spinner during Firebase initial auth resolution
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-xs text-slate-400 font-mono tracking-wider uppercase">
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-900 font-sans">
+        <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-4 shadow-sm" />
+        <p className="text-xs text-slate-600 font-bold tracking-wider uppercase">
           Initializing RetailOS Liberia...
         </p>
       </div>
