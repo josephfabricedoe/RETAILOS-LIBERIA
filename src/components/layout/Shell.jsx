@@ -96,7 +96,7 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
     isSharedTerminal, 
     isTerminalLocked, 
     lockTerminalStaff,
-    isSuperAdmin: isSuperUser,
+    isSuperAdmin,
     currentUser,
     setRole
   } = useAuth();
@@ -106,7 +106,7 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
   const userRole = normalizeRole(userProfile?.role, currentUser?.email);
   const roleDef = ROLE_DEFINITIONS[userRole] || ROLE_DEFINITIONS.cashier;
   const storePlan = currentTenant?.subscriptionPlan || 'starter';
-  const isSuper = isSuperUser || userRole === 'superadmin';
+  const isSuper = isSuperAdmin || userRole === 'superadmin';
 
   // Role permissions check (checks if the user's role allows this module)
   const isRoleAllowed = isSuper || canAccessModule(userRole, activeModule, 'enterprise');
