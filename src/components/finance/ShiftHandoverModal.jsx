@@ -30,11 +30,16 @@ export default function ShiftHandoverModal({ isOpen, onClose, sales = [], expens
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [btStatus, setBtStatus] = useState('idle');
 
-  const grossSales = sales.reduce((sum, s) => sum + (s.total || 0), 0);
-  const cashSales = sales.filter(s => (s.paymentMethod || 'Cash').toLowerCase().includes('cash')).reduce((sum, s) => sum + (s.total || 0), 0);
-  const momoSales = sales.filter(s => (s.paymentMethod || '').toLowerCase().includes('momo') || (s.paymentMethod || '').toLowerCase().includes('mobile')).reduce((sum, s) => sum + (s.total || 0), 0);
-  const cardSales = sales.filter(s => (s.paymentMethod || '').toLowerCase().includes('card')).reduce((sum, s) => sum + (s.total || 0), 0);
-  const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const fmt = (val, d = 2) => {
+    const n = Number(val);
+    return isNaN(n) ? (0).toFixed(d) : n.toFixed(d);
+  };
+
+  const grossSales = sales.reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const cashSales = sales.filter(s => (s.paymentMethod || 'Cash').toLowerCase().includes('cash')).reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const momoSales = sales.filter(s => (s.paymentMethod || '').toLowerCase().includes('momo') || (s.paymentMethod || '').toLowerCase().includes('mobile')).reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const cardSales = sales.filter(s => (s.paymentMethod || '').toLowerCase().includes('card')).reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
 
   const float = parseFloat(openingFloatUSD) || 0;
   const expectedCash = float + cashSales - totalExpenses;
@@ -82,14 +87,14 @@ export default function ShiftHandoverModal({ isOpen, onClose, sales = [], expens
         openingFloatUSD: float,
         countedCashUSD: parseFloat(countedCashUSD) || 0,
         countedCashLRD: parseFloat(countedCashLRD) || 0,
-        totalCountedUSD: Number(totalCounted.toFixed(2)),
-        expectedCashUSD: Number(expectedCash.toFixed(2)),
-        varianceUSD: Number(variance.toFixed(2)),
-        grossSales: Number(grossSales.toFixed(2)),
+        totalCountedUSD: Number(fmt(totalCounted)),
+        expectedCashUSD: Number(fmt(expectedCash)),
+        varianceUSD: Number(fmt(variance)),
+        grossSales: Number(fmt(grossSales)),
         salesCount: sales.length,
-        cashSales: Number(cashSales.toFixed(2)),
-        momoSales: Number(momoSales.toFixed(2)),
-        expenses: Number(totalExpenses.toFixed(2)),
+        cashSales: Number(fmt(cashSales)),
+        momoSales: Number(fmt(momoSales)),
+        expenses: Number(fmt(totalExpenses)),
         notes,
       };
 
@@ -150,19 +155,19 @@ export default function ShiftHandoverModal({ isOpen, onClose, sales = [], expens
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
             <span className="text-[10px] text-slate-400 uppercase font-semibold block">Gross Sales</span>
-            <span className="text-sm font-black text-white">${grossSales.toFixed(2)}</span>
+            <span className="text-sm font-black text-white">${fmt(grossSales)}</span>
           </div>
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
             <span className="text-[10px] text-slate-400 uppercase font-semibold block">Cash in Drawer</span>
-            <span className="text-sm font-black text-emerald-400">${cashSales.toFixed(2)}</span>
+            <span className="text-sm font-black text-emerald-400">${fmt(cashSales)}</span>
           </div>
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
             <span className="text-[10px] text-slate-400 uppercase font-semibold block">MoMo / Orange</span>
-            <span className="text-sm font-black text-amber-400">${momoSales.toFixed(2)}</span>
+            <span className="text-sm font-black text-amber-400">${fmt(momoSales)}</span>
           </div>
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
             <span className="text-[10px] text-slate-400 uppercase font-semibold block">Expenses Paid</span>
-            <span className="text-sm font-black text-rose-400">-${totalExpenses.toFixed(2)}</span>
+            <span className="text-sm font-black text-rose-400">-${fmt(totalExpenses)}</span>
           </div>
         </div>
 
@@ -212,7 +217,7 @@ export default function ShiftHandoverModal({ isOpen, onClose, sales = [], expens
           <div>
             <span className="text-[10px] text-slate-400 uppercase font-semibold block">Calculated Drawer Balance</span>
             <span className="text-lg font-black text-white">
-              Expected: ${expectedCash.toFixed(2)} · Counted: ${totalCounted.toFixed(2)}
+              Expected: ${fmt(expectedCash)} · Counted: ${fmt(totalCounted)}
             </span>
           </div>
           <div className="text-right">
@@ -220,7 +225,7 @@ export default function ShiftHandoverModal({ isOpen, onClose, sales = [], expens
             <span className={`text-base font-black ${
               Math.abs(variance) < 0.05 ? 'text-emerald-400' : variance > 0 ? 'text-cyan-400' : 'text-red-400'
             }`}>
-              {variance >= 0 ? '+' : ''}${variance.toFixed(2)}
+              {variance >= 0 ? '+' : ''}${fmt(variance)}
             </span>
           </div>
         </div>

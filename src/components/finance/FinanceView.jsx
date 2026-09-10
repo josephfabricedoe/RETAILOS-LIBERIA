@@ -335,7 +335,10 @@ export default function FinanceView() {
         isFreePlan ? (
           <PlanUpgradeLockView moduleId="drawer" requiredPlan="growth" />
         ) : (
-          <CashReconciliation sales={filteredSales} />
+          <CashReconciliation 
+            sales={filteredSales} 
+            expenses={filteredExpenses.reduce((acc, e) => acc + Number(e.amount || 0), 0)}
+          />
         )
       )}
 
