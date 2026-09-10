@@ -123,18 +123,18 @@ export default function ReceiptModal({ isOpen, onClose, sale }) {
       footer={
         <div className="space-y-2.5 w-full">
           {btStatus === 'error' && (
-            <div className="text-xs text-red-300 bg-red-950/60 border border-red-800/60 p-2.5 rounded-xl flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-400 mt-0.5" />
+            <div className="text-xs text-red-800 bg-red-50 border border-red-200 p-2.5 rounded-xl flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600 mt-0.5" />
               <div className="flex-1">
-                <p className="font-semibold text-red-200">Bluetooth Notice</p>
+                <p className="font-bold text-red-900">Bluetooth Notice</p>
                 <p>{btError}</p>
               </div>
             </div>
           )}
 
           {btStatus === 'success' && (
-            <div className="text-xs text-emerald-300 bg-emerald-950/60 border border-emerald-800/60 p-2.5 rounded-xl flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+            <div className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl flex items-center gap-2 font-bold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
               <span>Printed to {printerName || '58mm Printer'} successfully!</span>
             </div>
           )}
@@ -144,7 +144,7 @@ export default function ReceiptModal({ isOpen, onClose, sale }) {
             <button
               onClick={handleBluetoothPrint}
               disabled={btStatus === 'printing' || btStatus === 'connecting'}
-              className="flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-cyan-500/20"
+              className="flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20"
             >
               <Bluetooth className="w-4 h-4" />
               <span>{btStatus === 'printing' ? 'Printing...' : 'Bluetooth 58mm'}</span>
@@ -152,7 +152,7 @@ export default function ReceiptModal({ isOpen, onClose, sale }) {
 
             <button
               onClick={handleShareWhatsApp}
-              className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20"
+              className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-700/20"
             >
               <Share2 className="w-4 h-4" />
               <span>WhatsApp Receipt</span>
@@ -162,14 +162,14 @@ export default function ReceiptModal({ isOpen, onClose, sale }) {
           <div className="flex items-center justify-between text-xs pt-1">
             <button
               onClick={handlePairPrinter}
-              className="text-slate-400 hover:text-cyan-400 flex items-center gap-1 text-[11px]"
+              className="text-slate-500 hover:text-emerald-700 flex items-center gap-1 text-[11px] font-semibold"
             >
               <Bluetooth className="w-3.5 h-3.5" />
               <span>{printerName ? `Paired: ${printerName}` : 'Pair New Printer'}</span>
             </button>
             <button
               onClick={handleSystemPrint}
-              className="text-slate-400 hover:text-white flex items-center gap-1 text-[11px]"
+              className="text-slate-500 hover:text-slate-900 flex items-center gap-1 text-[11px] font-semibold"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Standard Print</span>

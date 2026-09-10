@@ -42,20 +42,20 @@ function NavButton({ id, label, icon: Icon, active, isOpen, onClick, highlight =
   return (
     <button
       onClick={() => onClick(id)}
-      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
         active
-          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-xs'
+          ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
           : highlight
-          ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-900/40'
-          : 'text-slate-400 hover:text-white hover:bg-slate-800'
+          ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+          : 'text-slate-600 hover:text-slate-950 hover:bg-slate-100'
       }`}
     >
       <div className="flex items-center gap-3 min-w-0">
-        <Icon className={`w-5 h-5 flex-shrink-0 ${highlight ? 'text-emerald-400' : ''}`} />
+        <Icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-white' : highlight ? 'text-emerald-600' : 'text-slate-500'}`} />
         {isOpen && <span className="truncate">{label}</span>}
       </div>
       {isLocked && isOpen && (
-        <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/60 font-bold flex items-center gap-0.5 uppercase tracking-wider shrink-0">
+        <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 font-bold flex items-center gap-0.5 uppercase tracking-wider shrink-0">
           <Lock className="w-2.5 h-2.5" />
           <span>{requiredPlan === 'enterprise' ? 'Ent' : 'Growth'}</span>
         </span>
@@ -77,16 +77,19 @@ export default function Sidebar() {
   const bottomFiltered = BOTTOM_ITEMS.filter(i => isSuperAdmin || canAccessModule(role, i.id, 'enterprise'));
 
   const storeName = currentTenant?.businessName || 'RetailOS Liberia';
-  const themeColor = currentTenant?.themeColor || '#0ea5e9';
+  const themeColor = currentTenant?.themeColor || '#10b981';
 
   const planBadgeName = storePlan === 'enterprise' ? 'Enterprise' : storePlan === 'growth' ? 'Growth' : 'Free Forever';
 
+  const isFounderName = userProfile?.displayName === 'Joseph Doe' || userProfile?.displayName === 'Malydia Jasay';
+  const effectiveDisplayName = isSuperAdmin || isFounderName ? 'RetailOS Master Admin' : (userProfile?.displayName || 'Store Owner');
+
   return (
-    <aside className={`hidden md:flex flex-col bg-slate-900 border-r border-slate-800 transition-all duration-300 ${isSidebarOpen ? 'w-56' : 'w-16'}`}>
+    <aside className={`hidden md:flex flex-col bg-white border-r border-slate-200 transition-all duration-300 shadow-xs ${isSidebarOpen ? 'w-56' : 'w-16'}`}>
       {/* Store Header */}
-      <div className="flex items-center gap-2.5 p-4 border-b border-slate-800">
+      <div className="flex items-center gap-2.5 p-4 border-b border-slate-200 bg-slate-50/70">
         <div 
-          className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-xs shadow-md"
+          className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-xs shadow-sm"
           style={{ backgroundColor: themeColor }}
         >
           {currentTenant?.logoUrl ? (
@@ -97,17 +100,17 @@ export default function Sidebar() {
         </div>
         {isSidebarOpen && (
           <div className="min-w-0">
-            <span className="font-extrabold text-white text-sm tracking-tight block leading-tight truncate">
+            <span className="font-extrabold text-slate-900 text-sm tracking-tight block leading-tight truncate">
               {storeName}
             </span>
-            <span className="text-[10px] text-cyan-400 font-medium uppercase tracking-wider block">
-              RetailOS POS
+            <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider block">
+              RetailOS Liberia
             </span>
           </div>
         )}
         <button
           onClick={toggleSidebar}
-          className="ml-auto p-1 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors"
+          className="ml-auto p-1 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition-colors"
           aria-label="Toggle Sidebar"
         >
           <ChevronLeft className={`w-4 h-4 transition-transform ${!isSidebarOpen ? 'rotate-180' : ''}`} />
@@ -118,7 +121,7 @@ export default function Sidebar() {
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
         {/* Super-Admin Direct Entry Link */}
         {isSuperAdmin && (
-          <div className="mb-2 pb-2 border-b border-slate-800">
+          <div className="mb-2 pb-2 border-b border-slate-200">
             <NavButton
               id="superadmin"
               label="Super-Admin Hub"
@@ -151,7 +154,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom Actions */}
-      <div className="p-2 border-t border-slate-800 space-y-1">
+      <div className="p-2 border-t border-slate-200 bg-slate-50/50 space-y-1">
         {bottomFiltered.map(item => (
           <NavButton
             key={item.id}
@@ -165,19 +168,19 @@ export default function Sidebar() {
         ))}
 
         {/* User Role Badge & Switcher */}
-        <div className={`px-3 py-2 ${!isSidebarOpen ? 'flex justify-center' : ''}`}>
+        <div className={`px-3 py-2 bg-white rounded-xl border border-slate-200 shadow-2xs my-1 ${!isSidebarOpen ? 'flex justify-center' : ''}`}>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex-shrink-0 flex items-center justify-center shadow-xs">
-              <span className="text-xs font-bold text-white">{(userProfile?.displayName || userProfile?.email || 'O')[0].toUpperCase()}</span>
+            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex-shrink-0 flex items-center justify-center shadow-xs">
+              <span className="text-xs font-bold text-white">{(effectiveDisplayName || 'O')[0].toUpperCase()}</span>
             </div>
             {isSidebarOpen && (
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-white truncate">{userProfile?.displayName || 'Store Owner'}</p>
+                <p className="text-xs font-bold text-slate-900 truncate">{effectiveDisplayName}</p>
                 <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                   <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold border block ${roleDef.badgeColor}`}>
                     {roleDef.badge}
                   </span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-cyan-300 border border-slate-700 font-bold block">
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold block">
                     {planBadgeName}
                   </span>
                 </div>
@@ -185,7 +188,7 @@ export default function Sidebar() {
                   <button
                     type="button"
                     onClick={() => setRole(role === 'owner' ? 'cashier' : 'owner')}
-                    className="text-[9px] text-cyan-400 hover:text-cyan-300 underline font-semibold mt-1 block"
+                    className="text-[9px] text-emerald-700 hover:text-emerald-900 underline font-bold mt-1 block"
                     title="Toggle between Owner (Full Access) and Cashier (Register only)"
                   >
                     {role === 'owner' ? 'Preview Cashier View' : 'Back to Store Owner'}
@@ -200,10 +203,10 @@ export default function Sidebar() {
         {isSharedTerminal && (
           <button
             onClick={lockTerminalStaff}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-colors ${!isSidebarOpen ? 'justify-center' : ''}`}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 font-medium transition-colors ${!isSidebarOpen ? 'justify-center' : ''}`}
             title="Lock register and switch staff PIN"
           >
-            <Lock className="w-4 h-4 flex-shrink-0 text-amber-400" />
+            <Lock className="w-4 h-4 flex-shrink-0 text-amber-600" />
             {isSidebarOpen && <span>Switch Staff</span>}
           </button>
         )}
@@ -211,7 +214,7 @@ export default function Sidebar() {
         {/* Sign Out */}
         <button
           onClick={signOut}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs text-slate-400 hover:text-red-400 hover:bg-red-900/20 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs text-slate-600 hover:text-rose-600 hover:bg-rose-50 font-medium transition-colors"
         >
           <LogOut className="w-4 h-4 flex-shrink-0" />
           {isSidebarOpen && <span>Sign Out</span>}

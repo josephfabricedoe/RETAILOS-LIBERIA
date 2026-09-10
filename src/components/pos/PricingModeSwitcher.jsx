@@ -24,10 +24,10 @@ export default function PricingModeSwitcher({ mode, onChange, discountPct, onDis
           key={m.id}
           type="button"
           onClick={() => onChange(m.id)}
-          className={`px-2 py-0.5 rounded-lg text-xs font-semibold transition-colors ${
+          className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-colors ${
             mode === m.id
-              ? 'bg-cyan-500 text-slate-950 shadow-xs'
-              : 'bg-slate-800 text-slate-400 hover:text-white'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-700 hover:text-slate-950 hover:bg-slate-200 border border-slate-200'
           }`}
         >
           {m.short}
@@ -39,7 +39,7 @@ export default function PricingModeSwitcher({ mode, onChange, discountPct, onDis
           min={0} max={100} step={1}
           value={discountPct}
           onChange={e => onDiscountChange(Number(e.target.value))}
-          className="w-14 bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-0.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+          className="w-14 bg-white border border-slate-300 rounded-lg px-1.5 py-0.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-emerald-600"
           placeholder="%"
         />
       )}

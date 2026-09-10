@@ -20,7 +20,7 @@ export default function BottomNav() {
   const visibleItems = PRIMARY_MOBILE_ITEMS.filter(i => canAccessModule(role, i.id));
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900 border-t border-slate-800 flex items-center justify-around py-1.5 safe-bottom">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-around py-1.5 shadow-lg safe-bottom">
       {visibleItems.map(item => {
         const Icon = item.icon;
         const active = activeModule === item.id;
@@ -29,7 +29,7 @@ export default function BottomNav() {
             key={item.id}
             onClick={() => setActiveModule(item.id)}
             className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors ${
-              active ? 'text-cyan-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+              active ? 'text-emerald-600 font-extrabold' : 'text-slate-500 hover:text-slate-900 font-semibold'
             }`}
           >
             <Icon className="w-5 h-5" />

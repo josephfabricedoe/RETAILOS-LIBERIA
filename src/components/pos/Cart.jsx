@@ -32,11 +32,11 @@ export default function Cart({ items, onUpdate, onRemove, onCheckout }) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-48 text-slate-500">
-        <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center mb-3 text-slate-600">
+        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3 text-slate-400 border border-slate-200">
           <ShoppingBag className="w-6 h-6" />
         </div>
-        <p className="text-sm font-medium text-slate-400">Register Cart is empty</p>
-        <p className="text-xs text-slate-600 mt-1">Scan or search an item to ring up sale</p>
+        <p className="text-sm font-bold text-slate-700">Register Cart is empty</p>
+        <p className="text-xs text-slate-500 mt-1">Scan or tap an item to ring up sale</p>
       </div>
     );
   }
@@ -45,15 +45,15 @@ export default function Cart({ items, onUpdate, onRemove, onCheckout }) {
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto space-y-2 pr-1">
         {items.map((item, i) => (
-          <div key={i} className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-3">
+          <div key={i} className="bg-white border border-slate-200 shadow-2xs rounded-2xl p-3">
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="min-w-0">
-                <p className="text-sm font-bold text-white truncate">{item.product.name}</p>
+                <p className="text-sm font-bold text-slate-900 truncate">{item.product.name}</p>
                 <p className="text-xs text-slate-400 font-mono">{item.product.barcode}</p>
               </div>
               <button 
                 onClick={() => onRemove(i)} 
-                className="p-1 text-slate-500 hover:text-rose-400 transition-colors flex-shrink-0"
+                className="p-1 text-slate-400 hover:text-rose-600 transition-colors flex-shrink-0"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -65,38 +65,38 @@ export default function Cart({ items, onUpdate, onRemove, onCheckout }) {
                 discountPct={item.discountPct || 0}
                 onDiscountChange={pct => updateDiscount(i, pct)}
               />
-              <div className="flex items-center gap-1.5 bg-slate-900 rounded-xl p-0.5 border border-slate-700">
+              <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-0.5 border border-slate-200">
                 <button 
                   onClick={() => updateQty(i, -1)} 
-                  className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition-colors"
+                  className="w-6 h-6 rounded-lg bg-white hover:bg-slate-200 flex items-center justify-center text-slate-700 shadow-2xs transition-colors"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
-                <span className="text-xs font-bold w-6 text-center text-white">{item.quantity}</span>
+                <span className="text-xs font-black w-6 text-center text-slate-900">{item.quantity}</span>
                 <button 
                   onClick={() => updateQty(i, +1)} 
-                  className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition-colors"
+                  className="w-6 h-6 rounded-lg bg-white hover:bg-slate-200 flex items-center justify-center text-slate-700 shadow-2xs transition-colors"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
               </div>
-              <span className="text-sm font-bold text-cyan-300 ml-1">{format(item.total)}</span>
+              <span className="text-sm font-black text-emerald-700 ml-1">{format(item.total)}</span>
             </div>
           </div>
         ))}
       </div>
 
       {/* Subtotal & Checkout */}
-      <div className="border-t border-slate-800 pt-3 mt-3 space-y-3">
+      <div className="border-t border-slate-200 pt-3 mt-3 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-slate-400 text-xs uppercase tracking-wider font-semibold">
+          <span className="text-slate-500 text-xs uppercase tracking-wider font-bold">
             Subtotal ({items.length} item{items.length !== 1 ? 's' : ''})
           </span>
-          <span className="text-xl font-black text-white">{format(subtotal)}</span>
+          <span className="text-2xl font-black text-slate-900">{format(subtotal)}</span>
         </div>
         <button
           onClick={() => onCheckout(subtotal)}
-          className="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-cyan-500/25 active:scale-[0.99]"
+          className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-emerald-600/25 active:scale-[0.99]"
         >
           Proceed to Tender — {format(subtotal)}
         </button>

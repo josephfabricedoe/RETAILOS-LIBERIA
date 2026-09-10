@@ -18,11 +18,11 @@ export default function CurrencyToggle() {
   if (!isDualCurrency) {
     return (
       <div
-        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800/80 border border-slate-700/80 rounded-xl text-xs font-semibold text-slate-300"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-xl text-xs font-semibold text-amber-900 shadow-2xs"
         title={`Store Operating in Single Currency (${primaryCurrency})`}
       >
-        <Coins className="w-3.5 h-3.5 text-amber-400" />
-        <span className="text-amber-300 font-bold">{primaryCurrency} ({primarySymbol})</span>
+        <Coins className="w-3.5 h-3.5 text-amber-600" />
+        <span className="text-amber-900 font-extrabold">{primaryCurrency} ({primarySymbol})</span>
       </div>
     );
   }
@@ -33,11 +33,11 @@ export default function CurrencyToggle() {
     <button
       onClick={toggleCurrency}
       title={`Switch to ${nextCurrency}. 1 ${primaryCurrency} = ${exchangeRate} ${secondaryCurrency}`}
-      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold transition-colors group"
+      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 shadow-2xs rounded-xl text-xs font-semibold text-slate-800 transition-colors group"
     >
-      <ArrowRightLeft className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-180 transition-transform duration-300" />
-      <span className="text-amber-300 font-bold">{currency}</span>
-      <span className="text-slate-500 hidden sm:inline">
+      <ArrowRightLeft className="w-3.5 h-3.5 text-emerald-600 group-hover:rotate-180 transition-transform duration-300" />
+      <span className="text-emerald-700 font-extrabold">{currency}</span>
+      <span className="text-slate-400 font-bold hidden sm:inline">
         / {nextCurrency}
       </span>
     </button>

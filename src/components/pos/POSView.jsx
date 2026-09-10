@@ -320,17 +320,17 @@ export default function POSView() {
   };
 
   return (
-    <div className="h-full flex flex-col md:flex-row overflow-hidden bg-slate-950 text-slate-100">
+    <div className="h-full flex flex-col md:flex-row overflow-hidden bg-slate-100 text-slate-900">
       {/* Products Left Section */}
-      <div className="flex-1 flex flex-col min-w-0 border-b md:border-b-0 md:border-r border-slate-800 p-3 sm:p-4 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 border-b md:border-b-0 md:border-r border-slate-200 p-3 sm:p-4 overflow-hidden bg-slate-50/50">
         {/* Top Controls: Search Bar & Actions */}
-        <div className="space-y-3 pb-3 border-b border-slate-800">
+        <div className="space-y-3 pb-3 border-b border-slate-200">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-xs uppercase tracking-wider font-bold text-slate-400">
+              <span className="text-xs uppercase tracking-wider font-extrabold text-slate-700">
                 {currentTenant?.businessName || 'Store Register'}
               </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-900/50 text-cyan-300 border border-cyan-500/30">
+              <span className="text-[10px] font-black px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-300">
                 1 USD = L${exchangeRate}
               </span>
             </div>
@@ -339,23 +339,23 @@ export default function POSView() {
               <button
                 type="button"
                 onClick={() => setReceiptsHistoryOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs transition-colors"
               >
-                <Receipt className="w-3.5 h-3.5 text-cyan-400" />
+                <Receipt className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Receipts</span>
               </button>
 
               <button
                 type="button"
                 onClick={handlePairBt}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors shadow-2xs ${
                   btPrinter
-                    ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30'
-                    : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-400 hover:text-white'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600'
                 }`}
                 title={btPrinter ? `Paired with ${btPrinter}` : 'Pair Bluetooth Printer'}
               >
-                <Bluetooth className="w-3.5 h-3.5" />
+                <Bluetooth className="w-3.5 h-3.5 text-emerald-600" />
                 <span className="hidden sm:inline">{btPrinter ? 'Printer Ready' : 'Pair BT'}</span>
               </button>
             </div>
@@ -374,10 +374,10 @@ export default function POSView() {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+                className={`px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
                   selectedCategory === cat
-                    ? 'bg-cyan-500 text-slate-950 shadow-xs'
-                    : 'bg-slate-800/80 text-slate-400 hover:text-white'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-white text-slate-600 hover:text-slate-950 hover:bg-slate-100 border border-slate-200'
                 }`}
               >
                 {cat}
@@ -389,17 +389,17 @@ export default function POSView() {
         {/* Product Grid Area */}
         <div className="flex-1 overflow-y-auto py-3">
           {searchError && (
-            <div className="p-3 mb-3 bg-red-950/40 border border-red-800/50 rounded-xl text-xs text-red-300 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <div className="p-3 mb-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
               <span>{searchError}</span>
             </div>
           )}
 
           {displayProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-center text-slate-500">
-              <PackageOpen className="w-10 h-10 mb-2 text-slate-600" />
-              <p className="text-sm font-medium text-slate-400">No products available in this view</p>
-              <p className="text-xs text-slate-600 mt-0.5">Add items from the Inventory module or adjust your search.</p>
+              <PackageOpen className="w-10 h-10 mb-2 text-slate-400" />
+              <p className="text-sm font-bold text-slate-700">No products available in this view</p>
+              <p className="text-xs text-slate-500 mt-0.5">Add items from the Inventory module or adjust your search.</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
@@ -412,35 +412,35 @@ export default function POSView() {
                     onClick={() => addToCart(p)}
                     className={`relative p-3 rounded-2xl border text-left flex flex-col justify-between transition-all group ${
                       isOutOfStock
-                        ? 'bg-slate-900/50 border-slate-800/60 opacity-60'
-                        : 'bg-slate-850 hover:bg-slate-800 border-slate-750 hover:border-cyan-500/50 shadow-xs active:scale-[0.98]'
+                        ? 'bg-slate-50 border-slate-200 opacity-60'
+                        : 'bg-white hover:bg-slate-50/80 border-slate-200 hover:border-emerald-500/80 shadow-2xs hover:shadow-md active:scale-[0.98]'
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-mono text-slate-500 truncate max-w-[80px]">
+                        <span className="text-[10px] font-mono text-slate-400 truncate max-w-[80px]">
                           {p.barcode || p.sku || 'No Barcode'}
                         </span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                        <span className={`text-[10px] font-black px-1.5 py-0.2 rounded ${
                           (p.showroomQty || 0) > 5
-                            ? 'bg-emerald-950/60 text-emerald-300'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : (p.showroomQty || 0) > 0
-                            ? 'bg-amber-950/60 text-amber-300'
-                            : 'bg-rose-950/60 text-rose-300'
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}>
                           {p.showroomQty || 0} in stock
                         </span>
                       </div>
-                      <h4 className="font-bold text-white text-xs sm:text-sm line-clamp-2 leading-tight">
+                      <h4 className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-2 leading-tight">
                         {p.name}
                       </h4>
                     </div>
 
-                    <div className="mt-3 pt-2 border-t border-slate-800 flex items-baseline justify-between">
-                      <span className="text-sm font-black text-cyan-300">
+                    <div className="mt-3 pt-2 border-t border-slate-100 flex items-baseline justify-between">
+                      <span className="text-sm font-black text-emerald-700">
                         {format(p.retailPrice || 0)}
                       </span>
-                      <span className="text-[10px] text-slate-500 font-mono">
+                      <span className="text-[10px] text-slate-500 font-mono font-semibold">
                         L${((p.retailPrice || 0) * exchangeRate).toFixed(0)}
                       </span>
                     </div>
@@ -453,17 +453,17 @@ export default function POSView() {
       </div>
 
       {/* Right Cart Section */}
-      <div className="w-full md:w-80 lg:w-96 flex flex-col bg-slate-900 p-4 overflow-hidden flex-shrink-0">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+      <div className="w-full md:w-80 lg:w-96 flex flex-col bg-white p-4 overflow-hidden flex-shrink-0 border-t md:border-t-0 md:border-l border-slate-200 shadow-sm">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
           <div className="flex items-center gap-2">
-            <ShoppingBag className="w-5 h-5 text-cyan-400" />
-            <h3 className="font-bold text-white text-sm">Register Cart</h3>
+            <ShoppingBag className="w-5 h-5 text-emerald-600" />
+            <h3 className="font-black text-slate-900 text-sm">Register Cart</h3>
           </div>
           {cartItems.length > 0 && (
             <button
               type="button"
               onClick={() => setCartItems([])}
-              className="text-xs text-slate-400 hover:text-red-400 transition-colors"
+              className="text-xs font-bold text-slate-400 hover:text-rose-600 transition-colors"
             >
               Clear Cart
             </button>
@@ -482,17 +482,17 @@ export default function POSView() {
 
       {/* Checkout Tender Modal */}
       {checkoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-850">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh] text-slate-900">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
               <div className="flex items-center gap-2.5">
-                <CreditCard className="w-5 h-5 text-cyan-400" />
-                <h3 className="font-bold text-white text-base">Complete Sale & Payment</h3>
+                <CreditCard className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-black text-slate-900 text-base">Complete Sale & Payment</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setCheckoutModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -500,22 +500,22 @@ export default function POSView() {
 
             <div className="p-6 overflow-y-auto space-y-4">
               {/* Order Amount Summary */}
-              <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 space-y-2">
-                <div className="flex justify-between text-xs text-slate-400">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
+                <div className="flex justify-between text-xs text-slate-600 font-semibold">
                   <span>Subtotal ({cartItems.length} items):</span>
                   <span>${cartSubtotal.toFixed(2)}</span>
                 </div>
                 {discountAmount > 0 && (
-                  <div className="flex justify-between text-xs text-emerald-400 font-semibold">
+                  <div className="flex justify-between text-xs text-emerald-700 font-bold">
                     <span>Discount Applied:</span>
                     <span>-${discountAmount.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-base font-black text-white pt-2 border-t border-slate-700">
+                <div className="flex justify-between text-base font-black text-slate-900 pt-2 border-t border-slate-200">
                   <span>Total Due (USD):</span>
-                  <span className="text-cyan-300">${cartFinalTotal.toFixed(2)}</span>
+                  <span className="text-emerald-700">${cartFinalTotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-xs font-bold text-slate-400">
+                <div className="flex justify-between text-xs font-bold text-slate-500">
                   <span>Total Due (LRD @ {exchangeRate}):</span>
                   <span>L${(cartFinalTotal * exchangeRate).toFixed(0)}</span>
                 </div>
@@ -523,16 +523,16 @@ export default function POSView() {
 
               {/* Order Discount Controls */}
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                   Order Discount (Optional)
                 </label>
                 <div className="flex gap-2">
-                  <div className="flex bg-slate-800 rounded-xl p-0.5 border border-slate-700">
+                  <div className="flex bg-slate-100 rounded-xl p-0.5 border border-slate-200">
                     <button
                       type="button"
                       onClick={() => setOrderDiscountType('percent')}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
-                        orderDiscountType === 'percent' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400'
+                      className={`px-3 py-1.5 text-xs font-black rounded-lg transition-colors ${
+                        orderDiscountType === 'percent' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600'
                       }`}
                     >
                       %
@@ -540,8 +540,8 @@ export default function POSView() {
                     <button
                       type="button"
                       onClick={() => setOrderDiscountType('fixed')}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
-                        orderDiscountType === 'fixed' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400'
+                      className={`px-3 py-1.5 text-xs font-black rounded-lg transition-colors ${
+                        orderDiscountType === 'fixed' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600'
                       }`}
                     >
                       $
@@ -552,14 +552,14 @@ export default function POSView() {
                     value={orderDiscountValue}
                     onChange={(e) => setOrderDiscountValue(e.target.value)}
                     placeholder={orderDiscountType === 'percent' ? 'e.g. 10%' : 'e.g. $5.00'}
-                    className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    className="flex-1 bg-white border border-slate-300 rounded-xl px-3.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
                   />
                 </div>
               </div>
 
               {/* Payment Method Selector */}
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                   Payment Method
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -570,8 +570,8 @@ export default function POSView() {
                       onClick={() => setPaymentMethod(m)}
                       className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center ${
                         paymentMethod === m
-                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500 shadow-xs'
-                          : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                          ? 'bg-emerald-50 text-emerald-800 border-2 border-emerald-600 shadow-2xs'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                       }`}
                     >
                       {m}
@@ -582,7 +582,7 @@ export default function POSView() {
 
               {/* Amount Tendered (Supports split/credit) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                   Amount Tendered (USD)
                 </label>
                 <div className="relative">
@@ -593,16 +593,16 @@ export default function POSView() {
                     value={amountPaid}
                     onChange={(e) => setAmountPaid(e.target.value)}
                     placeholder={cartFinalTotal.toFixed(2)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-white font-bold focus:outline-none focus:border-cyan-500"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
                   />
                 </div>
                 {amountPaid !== '' && Number(amountPaid) > cartFinalTotal && (
-                  <p className="text-xs text-emerald-400 mt-1 font-semibold">
+                  <p className="text-xs text-emerald-700 mt-1 font-bold">
                     Change to Return: ${(Number(amountPaid) - cartFinalTotal).toFixed(2)} (or L${((Number(amountPaid) - cartFinalTotal) * exchangeRate).toFixed(0)})
                   </p>
                 )}
                 {amountPaid !== '' && Number(amountPaid) < cartFinalTotal && (
-                  <p className="text-xs text-amber-400 mt-1 font-semibold">
+                  <p className="text-xs text-amber-700 mt-1 font-bold">
                     Remaining Balance Due (Credit): ${(cartFinalTotal - Number(amountPaid)).toFixed(2)}
                   </p>
                 )}
@@ -610,13 +610,13 @@ export default function POSView() {
 
               {/* Customer Association (VIP Accounts) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                   Link Customer / VIP Credit Account
                 </label>
                 <select
                   value={selectedCustomerId}
                   onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
                 >
                   <option value="">Walk-in Customer (Standard Sale)</option>
                   {customersList.map(c => (
@@ -628,11 +628,11 @@ export default function POSView() {
               </div>
             </div>
 
-            <div className="p-4 border-t border-slate-800 bg-slate-850 flex items-center justify-end gap-3">
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setCheckoutModal(false)}
-                className="px-4 py-2 text-xs text-slate-400 hover:text-white"
+                className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800"
               >
                 Cancel
               </button>
@@ -640,7 +640,7 @@ export default function POSView() {
                 type="button"
                 disabled={processing}
                 onClick={handleCompleteSale}
-                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-cyan-500/25 flex items-center gap-2 disabled:opacity-50"
+                className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-emerald-600/25 flex items-center gap-2 disabled:opacity-50"
               >
                 {processing && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                 <span>{processing ? 'Processing...' : `Confirm & Print Receipt ($${cartFinalTotal.toFixed(2)})`}</span>

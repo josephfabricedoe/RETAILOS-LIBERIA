@@ -126,57 +126,57 @@ export default function PlanUpgradeLockView({ moduleId }) {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-4 sm:p-6">
-      <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+      <div className="max-w-2xl w-full bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 text-slate-900">
         {/* Header Badge */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-2xs">
               <Lock className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 px-2 py-0.5 rounded bg-amber-950/60 border border-amber-800/60">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 px-2 py-0.5 rounded bg-amber-50 border border-amber-200">
                 Requires {requiredPlan.name}
               </span>
-              <h2 className="text-xl font-black text-white mt-1">{details.title}</h2>
+              <h2 className="text-xl font-black text-slate-900 mt-1">{details.title}</h2>
             </div>
           </div>
 
           <div className="text-left sm:text-right">
-            <span className="text-xs text-slate-400 block">Your Current Plan:</span>
-            <span className="text-xs font-bold text-cyan-300">{currentPlanName}</span>
+            <span className="text-xs text-slate-500 font-medium block">Your Current Plan:</span>
+            <span className="text-xs font-black text-emerald-700">{currentPlanName}</span>
           </div>
         </div>
 
         {/* Feature Explanation */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-bold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-3 py-1 rounded-full">
-            <Lock className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-2 text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
+            <Lock className="w-3.5 h-3.5 text-amber-600" />
             <span>{requiredPlan.name} Feature</span>
           </div>
-          <span className="text-[11px] text-slate-400">
-            Current Plan: <strong className="text-white">{currentPlanName}</strong>
+          <span className="text-[11px] text-slate-500 font-medium">
+            Current Plan: <strong className="text-slate-900">{currentPlanName}</strong>
           </span>
         </div>
 
         {/* Feature Title & Description */}
         <div className="space-y-2">
-          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
             {details.title}
           </h2>
-          <p className="text-xs text-slate-300 leading-relaxed">
+          <p className="text-xs text-slate-600 leading-relaxed font-medium">
             {details.description}
           </p>
         </div>
 
         {/* What You Get in This Tier */}
-        <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 space-y-3">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
             What your business unlocks on {requiredPlan.name}:
           </span>
           <ul className="space-y-2.5">
             {details.benefits.map((benefit, idx) => (
-              <li key={idx} className="flex items-start gap-2.5 text-xs text-slate-200">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <li key={idx} className="flex items-start gap-2.5 text-xs text-slate-800 font-semibold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <span>{benefit}</span>
               </li>
             ))}
@@ -184,23 +184,23 @@ export default function PlanUpgradeLockView({ moduleId }) {
         </div>
 
         {/* Pricing Card Banner */}
-        <div className="p-4 bg-gradient-to-r from-emerald-950/40 via-cyan-950/40 to-slate-900 border border-emerald-500/30 rounded-2xl flex items-center justify-between">
+        <div className="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200 rounded-2xl flex items-center justify-between shadow-2xs">
           <div>
-            <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">
+            <span className="text-[10px] text-emerald-800 font-bold uppercase tracking-wider block">
               Flexible Monthly Plan
             </span>
-            <span className="text-lg font-black text-white">{requiredPlan.name}</span>
+            <span className="text-lg font-black text-slate-900">{requiredPlan.name}</span>
           </div>
           <div className="text-right">
-            <span className="text-2xl font-black text-emerald-400">{requiredPlan.price}</span>
-            <span className="text-[10px] text-slate-400 block">No contract · Cancel anytime</span>
+            <span className="text-2xl font-black text-emerald-700">{requiredPlan.price}</span>
+            <span className="text-[10px] text-slate-500 font-medium block">No contract · Cancel anytime</span>
           </div>
         </div>
 
         {/* Call to Action: RetailOS Liberia Support Line */}
         <div className="space-y-3 pt-2">
-          <p className="text-xs text-center text-slate-400">
-            Contact the <strong className="text-white">RetailOS Liberia Team</strong> to activate your upgrade. Our team will switch on your new features immediately from the Master Admin Console:
+          <p className="text-xs text-center text-slate-600 font-medium">
+            Contact the <strong className="text-slate-900 font-bold">RetailOS Liberia Team</strong> to activate your upgrade. Our team will switch on your new features immediately from the Master Admin Console:
           </p>
 
           <div className="flex flex-col sm:flex-row items-stretch gap-3">
@@ -208,7 +208,7 @@ export default function PlanUpgradeLockView({ moduleId }) {
               href={`https://wa.me/231770430269?text=${waText}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
+              className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2"
             >
               <MessageCircle className="w-4 h-4" />
               <span>WhatsApp RetailOS Team to Upgrade</span>
@@ -216,9 +216,9 @@ export default function PlanUpgradeLockView({ moduleId }) {
 
             <a
               href="tel:0770430269"
-              className="py-3 px-4 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2"
+              className="py-3 px-4 bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-2xs"
             >
-              <Phone className="w-4 h-4 text-emerald-400" />
+              <Phone className="w-4 h-4 text-emerald-600" />
               <span>Call: 0770430269</span>
             </a>
           </div>
