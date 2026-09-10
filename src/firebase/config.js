@@ -2,8 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { 
   initializeFirestore, 
-  persistentLocalCache, 
-  persistentMultipleTabManager 
+  memoryLocalCache 
 } from 'firebase/firestore';
 
 // RetailOS Liberia - Firebase Configuration
@@ -20,11 +19,24 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Initialize Firestore with persistent multi-tab IndexedDB cache for offline resiliency across Liberia
+// Safe cleanup of legacy corrupted firestore IndexedDB databases if any exist in browser
+if (typeof window !== 'undefined' && 'indexedDB' in window) {
+  try {
+    if (window.indexedDB && typeof window.indexedDB.databases === 'function') {
+      window.indexedDB.databases().then((dbs) => {
+        dbs.forEach((dbInfo) => {
+          if (dbInfo && dbInfo.name && (dbInfo.name.includes('firestore') || dbInfo.name.includes('firebase'))) {
+            try { window.indexedDB.deleteDatabase(dbInfo.name); } catch (e) {}
+          }
+        });
+      }).catch(() => {});
+    }
+  } catch (e) {}
+}
+
+// Initialize Firestore with resilient memoryLocalCache to eliminate multi-tab IndexedDB lock assertion crashes
 export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager(),
-  }),
+  localCache: memoryLocalCache(),
 });
 
 export default app;

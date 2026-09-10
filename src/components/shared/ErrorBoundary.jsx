@@ -15,19 +15,39 @@ export default class ErrorBoundary extends React.Component {
     console.error('RetailOS App Crash caught:', error, errorInfo);
   }
 
-  handleReset = () => {
+  clearIndexedDB = async () => {
+    try {
+      if (typeof window !== 'undefined' && 'indexedDB' in window && typeof window.indexedDB.databases === 'function') {
+        const dbs = await Promise.race([
+          window.indexedDB.databases(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 500))
+        ]);
+        if (Array.isArray(dbs)) {
+          dbs.forEach((dbInfo) => {
+            if (dbInfo && dbInfo.name) {
+              try { window.indexedDB.deleteDatabase(dbInfo.name); } catch (e) {}
+            }
+          });
+        }
+      }
+    } catch (e) {}
+  };
+
+  handleReset = async () => {
     try {
       localStorage.removeItem('retailos_role_override');
       sessionStorage.clear();
+      await this.clearIndexedDB();
     } catch (e) {}
     window.location.hash = '#workspace';
     window.location.reload();
   };
 
-  handleSignOutAndReset = () => {
+  handleSignOutAndReset = async () => {
     try {
       localStorage.clear();
       sessionStorage.clear();
+      await this.clearIndexedDB();
     } catch (e) {}
     window.location.hash = '#login';
     window.location.reload();
