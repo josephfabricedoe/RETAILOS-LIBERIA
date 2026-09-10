@@ -36,10 +36,10 @@ export default function SuperAdminDashboard({ onEnterStore }) {
   const activeStores = allTenants.filter(t => t.subscriptionStatus === 'active' || t.subscriptionStatus === 'trial').length;
   
   // Calculate estimated Monthly Recurring Revenue (MRR) based on tiers
-  // Starter: $0 (Free Forever), Growth: $19.99, Enterprise: $69.99
+  // Starter: $0 (Free Forever), Growth: $19.99, Enterprise: $39.99
   const mrrUSD = allTenants.reduce((sum, t) => {
     if (t.subscriptionStatus === 'suspended') return sum;
-    if (t.subscriptionPlan === 'enterprise') return sum + 69.99;
+    if (t.subscriptionPlan === 'enterprise') return sum + 39.99;
     if (t.subscriptionPlan === 'growth') return sum + 19.99;
     return sum + 0; // Entry plan is $0 Free Forever
   }, 0);
@@ -352,7 +352,7 @@ export default function SuperAdminDashboard({ onEnterStore }) {
                           >
                             <option value="starter">Starter ($0 Free)</option>
                             <option value="growth">Growth ($19.99/mo)</option>
-                            <option value="enterprise">Enterprise ($69.99/mo)</option>
+                            <option value="enterprise">Enterprise ($39.99/mo)</option>
                           </select>
                           <div>
                             {t.subscriptionStatus === 'active' ? (

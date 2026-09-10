@@ -147,7 +147,7 @@ export default function SettingsView() {
               {currentStore?.subscriptionPlan === 'starter' || currentStore?.plan === 'Starter'
                 ? '$0 / mo (Free Forever)'
                 : currentStore?.subscriptionPlan === 'enterprise' || currentStore?.plan === 'Enterprise'
-                ? '$69.99 / mo'
+                ? '$39.99 / mo'
                 : '$19.99 / mo'}
             </span>
           </div>

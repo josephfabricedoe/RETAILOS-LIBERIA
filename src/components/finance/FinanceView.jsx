@@ -9,10 +9,13 @@ import {
   UploadCloud, 
   Calendar,
   Layers,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Lock
 } from 'lucide-react';
 import { useTenantCollection } from '../../hooks/useTenantFirestore';
 import { useTenant } from '../../contexts/TenantContext';
+import { useAuth } from '../../hooks/useAuth';
+import PlanUpgradeLockView from '../shared/PlanUpgradeLockView';
 import DateFilterBar from './DateFilterBar';
 import SummaryMetrics from './SummaryMetrics';
 import SalesChart from './SalesChart';
@@ -27,9 +30,13 @@ import DetailedStoreReport from './DetailedStoreReport';
 import ReceiptModal from '../pos/ReceiptModal';
 
 export default function FinanceView() {
-  const { currentStore } = useTenant();
+  const { currentStore, currentTenant } = useTenant();
+  const { isSuperAdmin } = useAuth();
+  const storePlan = currentTenant?.subscriptionPlan || 'starter';
+  const isFreePlan = !isSuperAdmin && storePlan === 'starter';
+
   const [activeTab, setActiveTab] = useState('overview'); // overview, transactions, expenses, drawer, pnl
-  const [dateFilter, setDateFilter] = useState('thisMonth');
+  const [dateFilter, setDateFilter] = useState(isFreePlan ? 'today' : 'thisMonth');
   const [customRange, setCustomRange] = useState({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
     end: new Date().toISOString().slice(0, 10)
@@ -85,11 +92,11 @@ export default function FinanceView() {
   }, [allSales, allExpenses, dateFilter, customRange]);
 
   const tabs = [
-    { id: 'overview', label: 'Financial Overview', icon: BarChart3 },
-    { id: 'transactions', label: 'Sales & Receipts', icon: Receipt, badge: filteredSales.length },
-    { id: 'expenses', label: 'Store Expenses', icon: Wallet, badge: filteredExpenses.length },
-    { id: 'drawer', label: 'Cash Drawer & Shifts', icon: ArrowRightLeft },
-    { id: 'pnl', label: 'P&L Statement', icon: Layers }
+    { id: 'overview', label: isFreePlan ? 'Daily Sales Overview' : 'Financial Overview', icon: BarChart3 },
+    { id: 'transactions', label: isFreePlan ? 'Daily Sales Inflow' : 'Sales & Receipts', icon: Receipt, badge: filteredSales.length },
+    { id: 'expenses', label: 'Store Expenses', icon: Wallet, badge: isFreePlan ? undefined : filteredExpenses.length, isLocked: isFreePlan, planRequired: 'Growth' },
+    { id: 'drawer', label: 'Cash Drawer & Shifts', icon: ArrowRightLeft, isLocked: isFreePlan, planRequired: 'Growth' },
+    { id: 'pnl', label: 'P&L Statement', icon: Layers, isLocked: isFreePlan, planRequired: 'Growth' }
   ];
 
   return (
@@ -98,31 +105,54 @@ export default function FinanceView() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Financial Hub</h1>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              {isFreePlan ? 'Daily Financial Report' : 'Financial Hub'}
+            </h1>
             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
               {currentStore?.name || 'Store'}
             </span>
+            {isFreePlan && (
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                Free Forever Plan
+              </span>
+            )}
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Dual-currency sales analytics, cash drawer balancing, and store P&L ledger
+            {isFreePlan
+              ? 'Daily sales overview and daily sales inflow transactions (Free Forever Plan)'
+              : 'Dual-currency sales analytics, cash drawer balancing, and store P&L ledger'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowExpenseModal(true)}
+            onClick={() => {
+              if (isFreePlan) {
+                setActiveTab('expenses');
+              } else {
+                setShowExpenseModal(true);
+              }
+            }}
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm transition"
           >
-            <Plus className="w-3.5 h-3.5" />
+            {isFreePlan ? <Lock className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
             Record Expense
+            {isFreePlan && <span className="text-[9px] bg-amber-700/50 px-1 py-0.2 rounded text-white">Growth</span>}
           </button>
 
           <button
-            onClick={() => setShowHandoverModal(true)}
+            onClick={() => {
+              if (isFreePlan) {
+                setActiveTab('drawer');
+              } else {
+                setShowHandoverModal(true);
+              }
+            }}
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white rounded-xl shadow-sm transition"
           >
-            <ArrowRightLeft className="w-3.5 h-3.5" />
+            {isFreePlan ? <Lock className="w-3.5 h-3.5" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
             Shift Handover
+            {isFreePlan && <span className="text-[9px] bg-slate-700 px-1 py-0.2 rounded text-slate-200">Growth</span>}
           </button>
 
           <button
@@ -160,6 +190,12 @@ export default function FinanceView() {
             >
               <Icon className="w-4 h-4" />
               <span>{tab.label}</span>
+              {tab.isLocked && (
+                <span className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                  <Lock className="w-2.5 h-2.5" />
+                  {tab.planRequired || 'Growth'}
+                </span>
+              )}
               {tab.badge !== undefined && (
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                   isActive ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
@@ -229,78 +265,90 @@ export default function FinanceView() {
       )}
 
       {activeTab === 'expenses' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Operating Expenses</h2>
-              <p className="text-xs text-slate-500">Record and track store overheads (Rent, Fuel, Keh-Keh, Wages)</p>
+        isFreePlan ? (
+          <PlanUpgradeLockView moduleId="expenses" requiredPlan="growth" />
+        ) : (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Operating Expenses</h2>
+                <p className="text-xs text-slate-500">Record and track store overheads (Rent, Fuel, Keh-Keh, Wages)</p>
+              </div>
+              <button
+                onClick={() => setShowExpenseModal(true)}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Expense
+              </button>
             </div>
-            <button
-              onClick={() => setShowExpenseModal(true)}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add Expense
-            </button>
-          </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50/80 text-slate-500 border-b border-slate-100 uppercase tracking-wider font-semibold">
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4">Description</th>
-                  <th className="py-3 px-4">Logged By</th>
-                  <th className="py-3 px-4 text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredExpenses.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="py-12 text-center text-slate-400">
-                      No expenses logged for this time range.
-                    </td>
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/80 text-slate-500 border-b border-slate-100 uppercase tracking-wider font-semibold">
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Category</th>
+                    <th className="py-3 px-4">Description</th>
+                    <th className="py-3 px-4">Logged By</th>
+                    <th className="py-3 px-4 text-right">Amount</th>
                   </tr>
-                ) : (
-                  filteredExpenses.map((exp) => (
-                    <tr key={exp.id} className="hover:bg-slate-50/70 transition">
-                      <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
-                        {exp.date ? new Date(exp.date).toLocaleDateString() : 'N/A'}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/50">
-                          {exp.category || 'General'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-slate-700 font-medium">
-                        {exp.description || exp.notes || '—'}
-                      </td>
-                      <td className="py-3 px-4 text-slate-500">
-                        {exp.loggedBy || 'Staff'}
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-slate-900">
-                        {exp.currency === 'LRD' ? `L$ ${Number(exp.amount).toLocaleString()}` : `$${Number(exp.amount).toFixed(2)}`}
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredExpenses.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="py-12 text-center text-slate-400">
+                        No expenses logged for this time range.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredExpenses.map((exp) => (
+                      <tr key={exp.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
+                          {exp.date ? new Date(exp.date).toLocaleDateString() : 'N/A'}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/50">
+                            {exp.category || 'General'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-700 font-medium">
+                          {exp.description || exp.notes || '—'}
+                        </td>
+                        <td className="py-3 px-4 text-slate-500">
+                          {exp.loggedBy || 'Staff'}
+                        </td>
+                        <td className="py-3 px-4 text-right font-bold text-slate-900">
+                          {exp.currency === 'LRD' ? `L$ ${Number(exp.amount).toLocaleString()}` : `$${Number(exp.amount).toFixed(2)}`}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {activeTab === 'drawer' && (
-        <CashReconciliation sales={filteredSales} />
+        isFreePlan ? (
+          <PlanUpgradeLockView moduleId="drawer" requiredPlan="growth" />
+        ) : (
+          <CashReconciliation sales={filteredSales} />
+        )
       )}
 
       {activeTab === 'pnl' && (
-        <DetailedStoreReport
-          sales={filteredSales}
-          expenses={filteredExpenses}
-          products={products}
-        />
+        isFreePlan ? (
+          <PlanUpgradeLockView moduleId="pnl" requiredPlan="growth" />
+        ) : (
+          <DetailedStoreReport
+            sales={filteredSales}
+            expenses={filteredExpenses}
+            products={products}
+          />
+        )
       )}
 
       {/* Modals */}

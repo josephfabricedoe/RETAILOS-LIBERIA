@@ -13,6 +13,33 @@ const MODULE_DETAILS = {
       'Physical warehouse cycle count reconciliations',
     ],
   },
+  expenses: {
+    title: 'Store Overhead & Expense Tracking',
+    description: 'Track operating overheads like generator fuel, shop rent, transport, and staff stipends with receipts and category reports.',
+    benefits: [
+      'Categorized overhead tracking (Generator fuel, Rent, Logistics)',
+      'Dual-currency expense recording (USD and LRD)',
+      'Monthly overhead breakdown and export',
+    ],
+  },
+  drawer: {
+    title: 'Cash Drawer Balancing & Shift Handover',
+    description: 'Count physical cash drawer banknotes (USD & LRD), reconcile cash against register sales, and record shift handovers.',
+    benefits: [
+      'Banknote denomination calculator (USD notes & LRD banknotes)',
+      'Cash discrepancy variance tracking (Over / Short)',
+      'Shift handover Z-reports and staff audit',
+    ],
+  },
+  pnl: {
+    title: 'Automated Profit & Loss Statement (P&L)',
+    description: 'Real-time financial statement showing Revenue, Cost of Goods Sold (COGS), Gross Profit, Operating Expenses, and Net Operating Margin.',
+    benefits: [
+      'Automated COGS and gross profit margin percentage',
+      'Net operating profit calculation after expenses',
+      'Executive financial reporting formatted for store owners',
+    ],
+  },
   suppliers: {
     title: 'Suppliers & In-Transit Restock Tracking',
     description: 'Manage local and overseas vendor directories, issue purchase orders, and monitor in-transit lead times from China, USA, or Ghana.',

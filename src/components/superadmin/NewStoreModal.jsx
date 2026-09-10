@@ -340,7 +340,7 @@ export default function NewStoreModal({ onClose, onCreated }) {
               >
                 <option value="starter">Entry Plan ($0/mo - Free Forever)</option>
                 <option value="growth">Growth Plan ($19.99/mo or ~L$3,950)</option>
-                <option value="enterprise">Enterprise Plan ($69.99/mo - Free Setup & Training)</option>
+                <option value="enterprise">Enterprise Plan ($39.99/mo - Free Setup & Training)</option>
               </select>
             </div>
 

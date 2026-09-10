@@ -307,7 +307,7 @@ export default function LandingPage({ onGoToLogin, onStoreRegistered }) {
               </button>
             </div>
 
-            {/* Enterprise Plan - $69.99/mo */}
+            {/* Enterprise Plan - $39.99/mo */}
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-7 space-y-6 flex flex-col justify-between hover:border-slate-700 transition-all">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -320,8 +320,8 @@ export default function LandingPage({ onGoToLogin, onStoreRegistered }) {
                   For multi-branch supermarkets, pharmacies, and high-volume retail operations.
                 </p>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl sm:text-4xl font-black text-white">$69.99</span>
-                  <span className="text-slate-400 text-xs">/month (or ~L$13,850)</span>
+                  <span className="text-3xl sm:text-4xl font-black text-white">$39.99</span>
+                  <span className="text-slate-400 text-xs">/month (or ~L$7,900)</span>
                 </div>
                 <ul className="space-y-2.5 text-xs text-slate-300 pt-4 border-t border-slate-800">
                   <li className="flex items-center gap-2 font-bold text-emerald-400"><Award className="w-4 h-4" /> FREE In-Store Setup & Training (Save $50)</li>
@@ -337,7 +337,7 @@ export default function LandingPage({ onGoToLogin, onStoreRegistered }) {
                 onClick={() => setShowTrialModal(true)}
                 className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-white font-bold text-xs transition-colors"
               >
-                Choose Enterprise ($69.99/mo)
+                Choose Enterprise ($39.99/mo)
               </button>
             </div>
           </div>
