@@ -24,7 +24,7 @@ import { useApp } from '../../contexts/AppContext';
 import NewStoreModal from './NewStoreModal';
 
 export default function SuperAdminDashboard({ onEnterStore }) {
-  const { allTenants, currentTenant, switchTenant, updateTenant, createTenant } = useTenant();
+  const { allTenants, currentTenant, switchTenant, updateTenant, updateTenantById, createTenant } = useTenant();
   const { setActiveModule } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -66,7 +66,12 @@ export default function SuperAdminDashboard({ onEnterStore }) {
   const handleToggleStatus = async (tenant) => {
     const newStatus = tenant.subscriptionStatus === 'active' ? 'suspended' : 'active';
     const bizId = tenant.businessId || tenant.id;
-    await updateTenant({ subscriptionStatus: newStatus });
+    await updateTenantById(bizId, { subscriptionStatus: newStatus });
+  };
+
+  const handleUpdatePlan = async (tenant, newPlan) => {
+    const bizId = tenant.businessId || tenant.id;
+    await updateTenantById(bizId, { subscriptionPlan: newPlan });
   };
 
   // Quick provision popular Liberia small retail businesses for demo
@@ -338,10 +343,17 @@ export default function SuperAdminDashboard({ onEnterStore }) {
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <div className="space-y-1">
-                          <span className="inline-block uppercase text-[10px] font-bold px-2 py-0.5 rounded bg-slate-700 text-slate-300">
-                            {t.subscriptionPlan || 'starter'}
-                          </span>
+                        <div className="space-y-1.5">
+                          <select
+                            value={t.subscriptionPlan || 'starter'}
+                            onChange={(e) => handleUpdatePlan(t, e.target.value)}
+                            className="bg-slate-900 border border-slate-700 hover:border-cyan-500 rounded-lg px-2 py-1 text-[11px] font-bold text-cyan-300 focus:outline-none cursor-pointer uppercase transition-colors"
+                            title="Super-Admin: Change subscription plan"
+                          >
+                            <option value="starter">Starter ($0 Free)</option>
+                            <option value="growth">Growth ($19.99/mo)</option>
+                            <option value="enterprise">Enterprise ($69.99/mo)</option>
+                          </select>
                           <div>
                             {t.subscriptionStatus === 'active' ? (
                               <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-semibold">

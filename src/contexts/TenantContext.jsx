@@ -165,6 +165,18 @@ export function TenantProvider({ children, currentUser }) {
     setCurrentTenant(prev => ({ ...prev, ...fields }));
   };
 
+  // Update specific tenant configuration (for Super Admin dashboard)
+  const updateTenantById = async (targetBizId, fields) => {
+    if (!targetBizId) return;
+    await setDoc(doc(db, 'businesses', targetBizId), {
+      ...fields,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    if ((currentTenant?.businessId || currentTenantId) === targetBizId) {
+      setCurrentTenant(prev => ({ ...prev, ...fields }));
+    }
+  };
+
   // Register a new tenant business (Used by Super Admin & Self-Service onboarding)
   const createTenant = async (newStoreData) => {
     const slug = newStoreData.slug || newStoreData.businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -217,6 +229,7 @@ export function TenantProvider({ children, currentUser }) {
       isSuperAdmin,
       switchTenant,
       updateTenant,
+      updateTenantById,
       createTenant,
       getTenantCol,
       getTenantDoc,

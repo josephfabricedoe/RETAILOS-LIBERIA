@@ -89,7 +89,10 @@ export default function InventoryView() {
       {/* Main Stock Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
         {tab === 'showroom' && (
-          <ShowroomTable onRestockClick={isOwnerUser ? setRestockProduct : null} />
+          <ShowroomTable 
+            onRestockClick={isOwnerUser ? setRestockProduct : null} 
+            onOpenImport={() => setShowImport(true)}
+          />
         )}
         {tab === 'storeroom' && (
           <StoreroomTable 

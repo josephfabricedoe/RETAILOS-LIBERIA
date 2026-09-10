@@ -96,7 +96,8 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
     isTerminalLocked, 
     lockTerminalStaff,
     isSuperAdmin,
-    currentUser
+    currentUser,
+    setRole
   } = useAuth();
   const { currentTenant, switchTenant } = useTenant();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -172,9 +173,14 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
               <h1 className="text-sm sm:text-base font-bold text-white truncate">
                 {MODULE_LABELS[activeModule] || storeName}
               </h1>
-              <span className={`hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full font-bold border ${roleDef.badgeColor}`}>
+              <button
+                type="button"
+                onClick={() => !isSuperAdmin && setRole(userRole === 'owner' ? 'cashier' : 'owner')}
+                className={`hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full font-bold border ${roleDef.badgeColor} ${!isSuperAdmin ? 'hover:opacity-85 cursor-pointer' : ''}`}
+                title={!isSuperAdmin ? `Current Mode: ${roleDef.label}. Click to toggle Owner / Cashier` : 'Platform Super-Admin'}
+              >
                 {roleDef.badge}
-              </span>
+              </button>
             </div>
             <p className="text-[11px] text-slate-400 font-medium hidden sm:block truncate">
               {storeName} · {currentTenant?.address || 'Monrovia, Liberia'}

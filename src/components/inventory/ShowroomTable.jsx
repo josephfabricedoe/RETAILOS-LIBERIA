@@ -6,12 +6,12 @@ import ProductForm from './ProductForm';
 import BarcodeLabelModal from './BarcodeLabelModal';
 import {
   AlertTriangle, Edit2, PlusCircle, Download,
-  Search, ChevronDown, ChevronRight, Package, Tag, Boxes
+  Search, ChevronDown, ChevronRight, Package, Tag, Boxes, FileSpreadsheet, Upload, Sparkles
 } from 'lucide-react';
-import { downloadCSV } from '../../utils/exportCsv';
+import { downloadCSV, downloadSampleInventoryTemplate } from '../../utils/exportCsv';
 import { DEFAULT_RETAIL_CATEGORIES } from '../pos/POSView';
 
-export default function ShowroomTable({ onRestockClick }) {
+export default function ShowroomTable({ onRestockClick, onOpenImport }) {
   const { getTenantCol, getTenantDoc, tenantId, currentTenant } = useTenant();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -113,6 +113,16 @@ export default function ShowroomTable({ onRestockClick }) {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={downloadSampleInventoryTemplate}
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs font-semibold text-cyan-300 rounded-xl transition-colors"
+            title="Download blank sample CSV spreadsheet template"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Sample CSV</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleExportStockCSV}
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs font-semibold text-slate-300 rounded-xl transition-colors"
           >
@@ -183,8 +193,50 @@ export default function ShowroomTable({ onRestockClick }) {
                 </tr>
               ) : categoryKeys.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-12 text-center text-slate-500">
-                    No products found. Add your first item or import a CSV.
+                  <td colSpan="6" className="py-10 px-6">
+                    <div className="max-w-xl mx-auto text-center space-y-4">
+                      <div className="w-12 h-12 bg-cyan-500/10 border border-cyan-500/30 rounded-2xl flex items-center justify-center mx-auto text-cyan-400">
+                        <Boxes className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-white">Your Store Shelves are Empty</h3>
+                        <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                          Get started by downloading our spreadsheet template, importing your existing CSV inventory, or adding your first item manually.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={downloadSampleInventoryTemplate}
+                          className="flex flex-col items-center justify-center p-4 bg-slate-850 hover:bg-slate-800 border border-slate-750 hover:border-cyan-500/50 rounded-2xl transition-all group text-center"
+                        >
+                          <FileSpreadsheet className="w-6 h-6 text-cyan-400 mb-2 group-hover:scale-110 transition-transform" />
+                          <span className="text-xs font-bold text-white">1. Download Template</span>
+                          <span className="text-[10px] text-slate-400 mt-1">Ready-to-fill CSV template</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={onOpenImport}
+                          className="flex flex-col items-center justify-center p-4 bg-cyan-950/30 hover:bg-cyan-900/40 border border-cyan-800/60 hover:border-cyan-400 rounded-2xl transition-all group text-center"
+                        >
+                          <Upload className="w-6 h-6 text-cyan-300 mb-2 group-hover:scale-110 transition-transform" />
+                          <span className="text-xs font-bold text-cyan-200">2. Upload CSV</span>
+                          <span className="text-[10px] text-cyan-400/80 mt-1">Bulk import all items</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setAddOpen(true)}
+                          className="flex flex-col items-center justify-center p-4 bg-slate-850 hover:bg-slate-800 border border-slate-750 hover:border-emerald-500/50 rounded-2xl transition-all group text-center"
+                        >
+                          <PlusCircle className="w-6 h-6 text-emerald-400 mb-2 group-hover:scale-110 transition-transform" />
+                          <span className="text-xs font-bold text-white">3. Add Manually</span>
+                          <span className="text-[10px] text-slate-400 mt-1">Single product form</span>
+                        </button>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ) : (

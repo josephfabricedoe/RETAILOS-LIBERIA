@@ -57,7 +57,7 @@ function NavButton({ id, label, icon: Icon, active, isOpen, onClick, highlight =
 
 export default function Sidebar() {
   const { activeModule, setActiveModule, isSidebarOpen, toggleSidebar } = useApp();
-  const { userProfile, signOut, isSharedTerminal, lockTerminalStaff, isSuperAdmin, currentUser } = useAuth();
+  const { userProfile, signOut, isSharedTerminal, lockTerminalStaff, isSuperAdmin, currentUser, setRole } = useAuth();
   const { currentTenant } = useTenant();
 
   const role = normalizeRole(userProfile?.role, currentUser?.email);
@@ -146,19 +146,33 @@ export default function Sidebar() {
           />
         ))}
 
-        {/* User Role Badge */}
-        <div className={`flex items-center gap-2 px-3 py-2 ${!isSidebarOpen ? 'justify-center' : ''}`}>
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex-shrink-0 flex items-center justify-center shadow-xs">
-            <span className="text-xs font-bold text-white">{(userProfile?.displayName || userProfile?.email || 'U')[0].toUpperCase()}</span>
-          </div>
-          {isSidebarOpen && (
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-white truncate">{userProfile?.displayName || userProfile?.email}</p>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold border block mt-0.5 w-fit ${roleDef.badgeColor}`}>
-                {roleDef.badge}
-              </span>
+        {/* User Role Badge & Switcher */}
+        <div className={`px-3 py-2 ${!isSidebarOpen ? 'flex justify-center' : ''}`}>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex-shrink-0 flex items-center justify-center shadow-xs">
+              <span className="text-xs font-bold text-white">{(userProfile?.displayName || userProfile?.email || 'O')[0].toUpperCase()}</span>
             </div>
-          )}
+            {isSidebarOpen && (
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-white truncate">{userProfile?.displayName || 'Store Owner'}</p>
+                <div className="flex items-center justify-between gap-1 mt-0.5">
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold border block w-fit ${roleDef.badgeColor}`}>
+                    {roleDef.badge}
+                  </span>
+                  {!isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setRole(role === 'owner' ? 'cashier' : 'owner')}
+                      className="text-[9px] text-cyan-400 hover:text-cyan-300 underline font-semibold cursor-pointer"
+                      title="Toggle between Owner (Full Access) and Cashier (Register only)"
+                    >
+                      {role === 'owner' ? 'Test Cashier' : 'Back to Owner'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Shared Terminal Lock */}
