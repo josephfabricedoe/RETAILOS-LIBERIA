@@ -1,23 +1,84 @@
 import { useApp } from '../contexts/AppContext';
 
-export function useCurrency() {
-  const { currency, exchangeRate } = useApp();
+export const WEST_AFRICAN_CURRENCIES = [
+  { code: 'USD', name: 'US Dollar', symbol: '$', defaultRate: 1 },
+  { code: 'LRD', name: 'Liberian Dollar', symbol: 'L$', defaultRate: 198 },
+  { code: 'GHS', name: 'Ghanaian Cedi', symbol: 'GH₵', defaultRate: 15.5 },
+  { code: 'NGN', name: 'Nigerian Naira', symbol: '₦', defaultRate: 1550 },
+  { code: 'XOF', name: 'West African CFA Franc', symbol: 'CFA', defaultRate: 605 },
+  { code: 'SLE', name: 'Sierra Leonean Leone', symbol: 'Le', defaultRate: 22.5 },
+  { code: 'GNF', name: 'Guinean Franc', symbol: 'FG', defaultRate: 8600 },
+  { code: 'EUR', name: 'Euro', symbol: '€', defaultRate: 0.92 },
+  { code: 'GBP', name: 'British Pound', symbol: '£', defaultRate: 0.77 },
+];
 
-  const format = (usdAmount) => {
-    if (currency === 'USD') {
-      return `$${Number(usdAmount || 0).toFixed(2)}`;
+export function useCurrency() {
+  const { 
+    currency, 
+    toggleCurrency, 
+    exchangeRate, 
+    currencyMode = 'dual',
+    primaryCurrency = 'USD',
+    primarySymbol = '$',
+    secondaryCurrency = 'LRD',
+    secondarySymbol = 'L$'
+  } = useApp();
+
+  const isDualCurrency = currencyMode === 'dual';
+  const fxRate = Number(exchangeRate || 198);
+
+  const format = (amountInPrimary) => {
+    const val = Number(amountInPrimary || 0);
+    if (!isDualCurrency || currency === primaryCurrency) {
+      return `${primarySymbol}${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-    return `L$${(Number(usdAmount || 0) * (exchangeRate || 198)).toFixed(0)}`;
+    const secondaryVal = val * fxRate;
+    return `${secondarySymbol}${Math.round(secondaryVal).toLocaleString()}`;
   };
 
-  const formatBoth = (usdAmount) => ({
-    primary: format(usdAmount),
-    usd: `$${Number(usdAmount || 0).toFixed(2)}`,
-    lrd: `L$${(Number(usdAmount || 0) * (exchangeRate || 198)).toFixed(0)}`,
+  const formatPrimary = (val) => {
+    return `${primarySymbol}${Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const formatSecondary = (val) => {
+    const secondaryVal = Number(val || 0) * fxRate;
+    return `${secondarySymbol}${Math.round(secondaryVal).toLocaleString()}`;
+  };
+
+  // Backwards compatibility aliases
+  const formatUSD = formatPrimary;
+  const formatLRD = formatSecondary;
+
+  const formatBoth = (valInPrimary) => ({
+    primary: format(valInPrimary),
+    usd: formatPrimary(valInPrimary),
+    lrd: isDualCurrency ? formatSecondary(valInPrimary) : null,
+    secondary: isDualCurrency ? formatSecondary(valInPrimary) : null
   });
 
-  const toUSD = (amount) => currency === 'USD' ? amount : amount / (exchangeRate || 198);
-  const toLRD = (usdAmount) => usdAmount * (exchangeRate || 198);
+  const toPrimary = (amount) => (currency === primaryCurrency || !isDualCurrency) ? amount : amount / fxRate;
+  const toSecondary = (amountInPrimary) => amountInPrimary * fxRate;
 
-  return { currency, exchangeRate, format, formatBoth, toUSD, toLRD };
+  return {
+    currency,
+    toggleCurrency,
+    exchangeRate: fxRate,
+    fxRate,
+    currencyMode,
+    isDualCurrency,
+    primaryCurrency,
+    primarySymbol,
+    secondaryCurrency,
+    secondarySymbol,
+    format,
+    formatPrimary,
+    formatSecondary,
+    formatUSD,
+    formatLRD,
+    formatBoth,
+    toPrimary,
+    toSecondary,
+    toUSD: toPrimary,
+    toLRD: toSecondary
+  };
 }

@@ -159,9 +159,16 @@ export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
           </div>
         </div>
 
-        <p className="text-center text-xs text-slate-600 mt-6">
-          RetailOS Liberia &copy; {new Date().getFullYear()}
-        </p>
+        <div className="text-center text-xs text-slate-400 mt-6 space-y-1">
+          <p>
+            Liberia Support & Training: <a href="tel:0770430269" className="font-bold text-emerald-400 hover:underline font-mono">0770430269</a>
+            <span className="mx-1 text-slate-600">·</span>
+            <a href="https://wa.me/231770430269" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">WhatsApp</a>
+          </p>
+          <p className="text-slate-600">
+            RetailOS Liberia &copy; {new Date().getFullYear()} · Multi-Tenant Retail OS
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -130,11 +130,13 @@ export default function SettingsView() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">Subscription & SaaS Plan</h2>
-              <p className="text-xs text-slate-500">Managed via RetailOS Liberia Platform Admin</p>
+              <p className="text-xs text-slate-500">
+                Support & Training Hotline: <a href="tel:0770430269" className="font-bold text-emerald-600 hover:underline">0770430269</a>
+              </p>
             </div>
           </div>
           <span className="px-3 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full text-xs uppercase">
-            {currentStore?.plan || 'Growth Plan'}
+            {currentStore?.subscriptionPlan || currentStore?.plan || 'Growth Plan'}
           </span>
         </div>
 
@@ -142,7 +144,11 @@ export default function SettingsView() {
           <div className="p-4 bg-slate-50 rounded-2xl">
             <span className="text-slate-400 block mb-1">Monthly Billing</span>
             <span className="font-bold text-slate-800 text-sm">
-              {currentStore?.plan === 'Starter' ? '$25 / mo' : currentStore?.plan === 'Enterprise' ? '$85 / mo' : '$45 / mo'}
+              {currentStore?.subscriptionPlan === 'starter' || currentStore?.plan === 'Starter'
+                ? '$0 / mo (Free Forever)'
+                : currentStore?.subscriptionPlan === 'enterprise' || currentStore?.plan === 'Enterprise'
+                ? '$69.99 / mo'
+                : '$19.99 / mo'}
             </span>
           </div>
 

@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
-import { Store, Phone, MapPin, Palette, FileText, CheckCircle2, DollarSign, Smartphone } from 'lucide-react';
+import { 
+  Store, 
+  Phone, 
+  MapPin, 
+  Palette, 
+  FileText, 
+  CheckCircle2, 
+  DollarSign, 
+  Smartphone,
+  Coins,
+  ArrowRightLeft
+} from 'lucide-react';
 import { useTenant } from '../../contexts/TenantContext';
+import { useApp } from '../../contexts/AppContext';
+import { WEST_AFRICAN_CURRENCIES } from '../../hooks/useCurrency';
 import { doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 
@@ -15,6 +28,7 @@ const COLOR_PRESETS = [
 
 export default function StoreInfoForm() {
   const { currentStore, tenantId } = useTenant();
+  const { updateCurrencySettings } = useApp();
 
   const [formData, setFormData] = useState({
     name: currentStore?.name || '',
@@ -25,11 +39,36 @@ export default function StoreInfoForm() {
     receiptFooter: currentStore?.receiptFooter || 'Thank you for your patronage! Please keep your receipt.',
     momoNumber: currentStore?.momoNumber || '',
     orangeNumber: currentStore?.orangeNumber || '',
-    fxRate: currentStore?.fxRate || 198
+    // Currency configuration
+    currencyMode: currentStore?.currencyMode || 'dual',
+    primaryCurrency: currentStore?.primaryCurrency || currentStore?.defaultCurrency || 'USD',
+    primarySymbol: currentStore?.primarySymbol || '$',
+    secondaryCurrency: currentStore?.secondaryCurrency || 'LRD',
+    secondarySymbol: currentStore?.secondarySymbol || 'L$',
+    exchangeRate: currentStore?.exchangeRate || currentStore?.fxRate || 198
   });
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  const handlePrimaryCurrencyChange = (code) => {
+    const found = WEST_AFRICAN_CURRENCIES.find((c) => c.code === code);
+    setFormData((prev) => ({
+      ...prev,
+      primaryCurrency: code,
+      primarySymbol: found ? found.symbol : '$'
+    }));
+  };
+
+  const handleSecondaryCurrencyChange = (code) => {
+    const found = WEST_AFRICAN_CURRENCIES.find((c) => c.code === code);
+    setFormData((prev) => ({
+      ...prev,
+      secondaryCurrency: code,
+      secondarySymbol: found ? found.symbol : 'L$',
+      exchangeRate: found ? found.defaultRate : prev.exchangeRate
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,11 +79,17 @@ export default function StoreInfoForm() {
 
     try {
       const storeDocRef = doc(db, 'businesses', tenantId);
-      await updateDoc(storeDocRef, {
+      const updates = {
         ...formData,
-        fxRate: parseFloat(formData.fxRate || 198),
+        exchangeRate: parseFloat(formData.exchangeRate || 198),
+        fxRate: parseFloat(formData.exchangeRate || 198),
         updatedAt: Timestamp.now()
-      });
+      };
+
+      await updateDoc(storeDocRef, updates);
+      if (updateCurrencySettings) {
+        await updateCurrencySettings(updates);
+      }
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3500);
@@ -60,9 +105,9 @@ export default function StoreInfoForm() {
     <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
       <div className="flex items-center justify-between pb-6 border-b border-slate-100 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Store Profile & Branding</h2>
+          <h2 className="text-xl font-bold text-slate-900">Store Profile & Multi-Currency</h2>
           <p className="text-xs text-slate-500">
-            Configure your business details, receipts, and brand colors
+            Configure your business details, single/dual currency modes, and brand colors
           </p>
         </div>
 
@@ -75,6 +120,7 @@ export default function StoreInfoForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 text-xs">
+        {/* Basic Info */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Store Name *</label>
@@ -137,27 +183,126 @@ export default function StoreInfoForm() {
           </div>
         </div>
 
-        {/* Currency & Mobile Money Details */}
-        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
-          <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-            Payment & Currency Settings
-          </span>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Currency Configuration Section (Requirement 1: Single or Dual & Editable Currencies) */}
+        <div className="p-5 bg-gradient-to-br from-slate-50 to-emerald-50/30 rounded-2xl border border-slate-200 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200/80">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Base FX Rate ($1 USD in LRD)</label>
-              <div className="relative">
-                <DollarSign className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="number"
-                  step="0.5"
-                  value={formData.fxRate}
-                  onChange={(e) => setFormData({ ...formData, fxRate: e.target.value })}
-                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold"
-                />
-              </div>
+              <span className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <Coins className="w-4 h-4 text-emerald-600" />
+                Store Currency Operating Mode
+              </span>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Choose single currency or dual currency with live exchange rate
+              </p>
             </div>
 
+            {/* Single vs Dual Toggle */}
+            <div className="flex bg-slate-200/80 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, currencyMode: 'single' })}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  formData.currencyMode === 'single'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Single Currency
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, currencyMode: 'dual' })}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  formData.currencyMode === 'dual'
+                    ? 'bg-white text-emerald-700 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Dual Currency
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            {/* Primary Currency */}
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Primary Currency ({formData.currencyMode === 'dual' ? 'Base / Benchmark' : 'Active Store Currency'})
+              </label>
+              <select
+                value={formData.primaryCurrency}
+                onChange={(e) => handlePrimaryCurrencyChange(e.target.value)}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-bold text-slate-800 bg-white"
+              >
+                {WEST_AFRICAN_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} ({c.symbol}) — {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Secondary Currency (only if dual) */}
+            {formData.currencyMode === 'dual' ? (
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Secondary Currency (Local Counter Currency)
+                </label>
+                <select
+                  value={formData.secondaryCurrency}
+                  onChange={(e) => handleSecondaryCurrencyChange(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-bold text-slate-800 bg-white"
+                >
+                  {WEST_AFRICAN_CURRENCIES.filter((c) => c.code !== formData.primaryCurrency).map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code} ({c.symbol}) — {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="p-3 bg-white/70 rounded-xl border border-slate-200/60 flex items-center text-xs text-slate-500">
+                <span>
+                  All products, POS receipts, and accounting will operate strictly in{' '}
+                  <strong className="text-slate-800">{formData.primaryCurrency} ({formData.primarySymbol})</strong>.
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Exchange Rate Input (if dual) */}
+          {formData.currencyMode === 'dual' && (
+            <div className="p-3.5 bg-white rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="font-bold text-slate-800 text-xs">
+                  Exchange Rate: 1 {formData.primaryCurrency} =
+                </span>
+                <p className="text-[11px] text-slate-500">
+                  Update anytime to reflect market fluctuations
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="any"
+                  value={formData.exchangeRate}
+                  onChange={(e) => setFormData({ ...formData, exchangeRate: e.target.value })}
+                  className="w-32 px-3 py-2 border border-slate-300 rounded-xl font-mono font-bold text-emerald-700 text-right text-sm"
+                />
+                <span className="font-bold text-slate-700 text-xs">{formData.secondaryCurrency}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Money Details */}
+        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
+          <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
+            Mobile Money Direct Merchant Accounts
+          </span>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Lonestar MTN MoMo #</label>
               <div className="relative">
@@ -234,7 +379,7 @@ export default function StoreInfoForm() {
             disabled={loading}
             className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition disabled:opacity-50"
           >
-            {loading ? 'Saving Changes...' : 'Save Store Profile'}
+            {loading ? 'Saving Changes...' : 'Save Store Profile & Currency'}
           </button>
         </div>
       </form>
