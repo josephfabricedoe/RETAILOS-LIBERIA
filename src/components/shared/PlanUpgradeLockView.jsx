@@ -94,6 +94,16 @@ const MODULE_DETAILS = {
       'Increase repeat store visits without expensive SMS fees',
     ],
   },
+  storefront: {
+    title: 'Public Online Storefront & WhatsApp Ordering',
+    description: 'Provide customers with an international-standard online store link. Customers can browse your real-time showroom stock, create a shopping bag, and dispatch verified orders directly to your WhatsApp counter.',
+    benefits: [
+      'Custom branded URL: retailos-liberia.web.app/?store=your-store#catalog',
+      'Real-time showroom shelf stock sync with zero manual updating',
+      'Direct customer WhatsApp order dispatch with items and total',
+      'Upload your store logo and remove the RetailOS watermark',
+    ],
+  },
 };
 
 export default function PlanUpgradeLockView({ moduleId }) {

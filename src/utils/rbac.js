@@ -87,9 +87,9 @@ export const ROLE_DEFINITIONS = {
 export const ROLE_PERMISSIONS = {
   delivery:   ['delivery', 'attendance'],
   cashier:    ['delivery', 'attendance', 'pos', 'customers'],
-  manager:    ['delivery', 'attendance', 'pos', 'customers', 'inventory', 'marketing', 'finance'],
-  owner:      ['delivery', 'attendance', 'pos', 'customers', 'inventory', 'marketing', 'finance', 'suppliers', 'staff', 'settings'],
-  superadmin: ['delivery', 'attendance', 'pos', 'customers', 'inventory', 'marketing', 'finance', 'suppliers', 'staff', 'settings', 'superadmin'],
+  manager:    ['delivery', 'attendance', 'pos', 'customers', 'inventory', 'marketing', 'finance', 'storefront'],
+  owner:      ['delivery', 'attendance', 'pos', 'customers', 'inventory', 'marketing', 'finance', 'suppliers', 'staff', 'settings', 'storefront'],
+  superadmin: ['delivery', 'attendance', 'pos', 'customers', 'inventory', 'marketing', 'finance', 'suppliers', 'staff', 'settings', 'storefront', 'superadmin'],
 };
 
 export const PLAN_TIERS = {
@@ -111,8 +111,8 @@ export const PLAN_TIERS = {
     id: 'enterprise',
     name: 'Enterprise Plan ($39.99/mo)',
     price: '$39.99/mo',
-    description: 'Multi-branch hub, delivery dispatch & WhatsApp marketing',
-    modules: ['pos', 'inventory', 'customers', 'settings', 'finance', 'suppliers', 'staff', 'attendance', 'delivery', 'marketing'],
+    description: 'Public online storefront, multi-branch hub, delivery dispatch & WhatsApp marketing',
+    modules: ['pos', 'inventory', 'customers', 'settings', 'finance', 'suppliers', 'staff', 'attendance', 'delivery', 'marketing', 'storefront'],
   },
 };
 

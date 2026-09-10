@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Modal from '../shared/Modal';
 import { useApp } from '../../contexts/AppContext';
+import { useTenant } from '../../contexts/TenantContext';
 import {
   Printer,
   Share2,
@@ -21,6 +22,7 @@ import {
 
 export default function ReceiptModal({ isOpen, onClose, sale }) {
   const { storeSettings, exchangeRate } = useApp();
+  const { currentStore } = useTenant();
   const receiptRef = useRef(null);
 
   const [btStatus, setBtStatus] = useState('idle');
@@ -182,12 +184,23 @@ export default function ReceiptModal({ isOpen, onClose, sale }) {
         className="bg-white text-slate-900 rounded-xl p-4 font-mono text-xs shadow-inner space-y-3"
       >
         <div className="text-center space-y-0.5 border-b border-dashed border-slate-300 pb-3">
+          {(storeSettings?.logoUrl || currentStore?.logoUrl) && (
+            <img
+              src={storeSettings?.logoUrl || currentStore?.logoUrl}
+              alt="Store Logo"
+              className="w-12 h-12 object-contain mx-auto mb-2"
+            />
+          )}
           <p className="font-extrabold text-sm uppercase tracking-wide">
-            {storeSettings?.storeName || 'RETAIL STORE'}
+            {storeSettings?.storeName || currentStore?.name || 'RETAIL STORE'}
           </p>
-          <p className="text-[10px] text-slate-600">{storeSettings?.address || 'Monrovia, Liberia'}</p>
-          {storeSettings?.phone && (
-            <p className="text-[10px] text-slate-600">Tel: {storeSettings.phone}</p>
+          <p className="text-[10px] text-slate-600">
+            {storeSettings?.address || currentStore?.address || 'Monrovia, Liberia'}
+          </p>
+          {(storeSettings?.phone || currentStore?.phone) && (
+            <p className="text-[10px] text-slate-600">
+              Tel: {storeSettings?.phone || currentStore?.phone}
+            </p>
           )}
           <p className="text-[11px] font-bold mt-1">
             RECEIPT #{sale.receiptNo || sale.id?.slice(-6).toUpperCase()}

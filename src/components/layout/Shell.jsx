@@ -45,6 +45,7 @@ import {
 } from 'lucide-react';
 import { canAccessModule, normalizeRole, getDefaultModuleForRole, ROLE_DEFINITIONS, isModuleAvailableForPlan } from '../../utils/rbac';
 import PlanUpgradeLockView from '../shared/PlanUpgradeLockView';
+import StorefrontHubView from '../public/StorefrontHubView';
 
 const MODULE_VIEWS = {
   pos:        POSView,
@@ -56,6 +57,7 @@ const MODULE_VIEWS = {
   attendance: AttendanceView,
   delivery:   DeliveryBoard,
   staff:      StaffView,
+  storefront: StorefrontHubView,
   settings:   SettingsView,
   superadmin: SuperAdminDashboard,
 };
@@ -70,6 +72,7 @@ const MODULE_LABELS = {
   attendance: 'Staff Attendance',
   delivery:   'Delivery Logistics',
   staff:      'Staff Management',
+  storefront: 'Online Storefront',
   settings:   'Store Settings',
   superadmin: 'Super-Admin Suite',
 };
@@ -78,6 +81,7 @@ const ALL_MOBILE_MODULES = [
   { id: 'pos',        label: 'Point of Sale',          icon: ShoppingCart },
   { id: 'inventory',  label: 'Inventory Stock',         icon: Package },
   { id: 'customers',  label: 'Customers & VIP',         icon: HeartHandshake },
+  { id: 'storefront', label: 'Online Storefront',       icon: Store },
   { id: 'suppliers',  label: 'Suppliers & Restock',     icon: Building2 },
   { id: 'finance',    label: 'Finance & Reports',       icon: BarChart3 },
   { id: 'attendance', label: 'Staff Attendance',        icon: Users },

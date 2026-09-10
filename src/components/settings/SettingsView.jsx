@@ -8,7 +8,11 @@ import {
   ShieldCheck, 
   Wifi, 
   CheckCircle2, 
-  RefreshCw 
+  RefreshCw,
+  Store,
+  ExternalLink,
+  Lock,
+  Sparkles
 } from 'lucide-react';
 import StoreInfoForm from './StoreInfoForm';
 import FactoryResetModal from './FactoryResetModal';
@@ -18,7 +22,7 @@ import { exportToCsv } from '../../utils/exportCsv';
 import { printReceipt58mm } from '../../utils/bluetoothPrinter';
 
 export default function SettingsView() {
-  const { currentStore, tenantId } = useTenant();
+  const { currentStore, currentTenant, tenantId, isSuperAdmin } = useTenant();
   const { docs: products } = useTenantCollection('products');
   const { docs: sales } = useTenantCollection('sales');
   const { docs: customers } = useTenantCollection('customers');
@@ -26,6 +30,12 @@ export default function SettingsView() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [printerStatus, setPrinterStatus] = useState('Disconnected');
   const [isTestingPrinter, setIsTestingPrinter] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+
+  const storePlan = currentTenant?.subscriptionPlan || currentStore?.subscriptionPlan || 'starter';
+  const isEnterpriseStore = isSuperAdmin || storePlan === 'enterprise';
+  const storeSlug = currentStore?.slug || currentTenant?.slug || tenantId || 'store';
+  const storefrontUrl = `${window.location.origin}/?store=${storeSlug}#catalog`;
 
   const handleTestPrint = async () => {
     setIsTestingPrinter(true);
@@ -85,6 +95,91 @@ export default function SettingsView() {
 
       {/* Store Profile Form */}
       <StoreInfoForm />
+
+      {/* Public Online Customer Storefront (Enterprise Exclusive) */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+              <Store className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-900">Public Online Storefront</h2>
+                {isEnterpriseStore ? (
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    Active on Web
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
+                    <Lock className="w-3 h-3 text-purple-700" />
+                    Enterprise Only ($39.99/mo)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500">
+                Shareable digital catalog link for customers to browse live shelf stock and dispatch WhatsApp orders
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3 text-xs">
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">
+              Your Public Storefront Catalog URL:
+            </label>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-[11px] text-slate-700 truncate select-all">
+                {storefrontUrl}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(storefrontUrl);
+                    setCopiedUrl(true);
+                    setTimeout(() => setCopiedUrl(false), 2500);
+                  }}
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs shrink-0"
+                >
+                  {copiedUrl ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Download className="w-4 h-4" />}
+                  <span>{copiedUrl ? 'Copied URL!' : 'Copy Link'}</span>
+                </button>
+                <a
+                  href={storefrontUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl transition flex items-center gap-1.5 border border-slate-200 shrink-0"
+                >
+                  <span>Open Storefront</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {!isEnterpriseStore && (
+            <div className="p-4 bg-purple-50/70 rounded-2xl border border-purple-200 text-xs space-y-2">
+              <div className="flex items-center gap-2 font-black text-purple-950">
+                <Sparkles className="w-4 h-4 text-purple-600" />
+                <span>Unlock Your Live Online Storefront with Enterprise</span>
+              </div>
+              <p className="text-purple-900 leading-relaxed">
+                Currently on the <strong>{currentStore?.subscriptionPlan || 'starter'}</strong> tier. Visitors to your storefront URL will see an &ldquo;Offline / Coming Soon&rdquo; notice until your store is upgraded to Enterprise ($39.99/mo).
+              </p>
+              <div className="pt-1">
+                <a
+                  href="tel:0770430269"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition"
+                >
+                  <span>Call 0770430269 for Instant Enterprise Upgrade</span>
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Bluetooth Thermal Printer Hardware */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
