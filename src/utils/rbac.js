@@ -92,11 +92,49 @@ export const ROLE_PERMISSIONS = {
   superadmin: ['delivery', 'attendance', 'pos', 'customers', 'inventory', 'marketing', 'finance', 'suppliers', 'staff', 'settings', 'superadmin'],
 };
 
-export function canAccessModule(role, moduleId) {
+export const PLAN_TIERS = {
+  starter: {
+    id: 'starter',
+    name: 'Free Forever ($0)',
+    price: '$0',
+    description: 'Core POS & inventory for small retail shops',
+    modules: ['pos', 'inventory', 'customers', 'settings'],
+  },
+  growth: {
+    id: 'growth',
+    name: 'Growth Plan ($19.99/mo)',
+    price: '$19.99/mo',
+    description: 'Storeroom warehouse, suppliers, cash drawer balancing & staff management',
+    modules: ['pos', 'inventory', 'customers', 'settings', 'suppliers', 'finance', 'staff', 'attendance'],
+  },
+  enterprise: {
+    id: 'enterprise',
+    name: 'Enterprise Plan ($69.99/mo)',
+    price: '$69.99/mo',
+    description: 'Multi-branch hub, delivery dispatch & WhatsApp marketing',
+    modules: ['pos', 'inventory', 'customers', 'settings', 'suppliers', 'finance', 'staff', 'attendance', 'delivery', 'marketing'],
+  },
+};
+
+export function isModuleAvailableForPlan(plan = 'starter', moduleId) {
+  const p = (plan || 'starter').toLowerCase().trim();
+  if (p === 'enterprise') return true;
+  const planInfo = PLAN_TIERS[p] || PLAN_TIERS.starter;
+  return planInfo.modules.includes(moduleId);
+}
+
+export function getRequiredPlanForModule(moduleId) {
+  if (PLAN_TIERS.starter.modules.includes(moduleId)) return 'starter';
+  if (PLAN_TIERS.growth.modules.includes(moduleId)) return 'growth';
+  return 'enterprise';
+}
+
+export function canAccessModule(role, moduleId, plan = 'enterprise') {
   const norm = normalizeRole(role);
   if (norm === 'superadmin') return true;
   const allowed = ROLE_PERMISSIONS[norm] || [];
-  return allowed.includes(moduleId);
+  if (!allowed.includes(moduleId)) return false;
+  return isModuleAvailableForPlan(plan, moduleId);
 }
 
 export function getDefaultModuleForRole(role) {

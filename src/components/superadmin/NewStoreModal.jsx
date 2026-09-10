@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { X, Building2, Store, Mail, Phone, Lock, DollarSign, Palette, Sparkles, Coins, PhoneCall } from 'lucide-react';
+import { X, Building2, Store, Mail, Phone, Lock, DollarSign, Palette, Sparkles, Coins, PhoneCall, Key } from 'lucide-react';
 import { useTenant } from '../../contexts/TenantContext';
 import { WEST_AFRICAN_CURRENCIES } from '../../hooks/useCurrency';
+import { auth, db } from '../../firebase/config';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 const STORE_TYPES = [
   'Boutique & Fashion',
@@ -30,6 +33,7 @@ export default function NewStoreModal({ onClose, onCreated }) {
   const [businessType, setBusinessType] = useState('Boutique & Fashion');
   const [ownerName, setOwnerName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
   const [terminalEmail, setTerminalEmail] = useState('');
   const [themeColor, setThemeColor] = useState('#0ea5e9');
@@ -87,6 +91,23 @@ export default function NewStoreModal({ onClose, onCreated }) {
         phone: ownerPhone.trim(),
         whatsappNumber: ownerPhone.replace(/[^0-9]/g, ''),
       });
+
+      // If owner email and password provided, create Firebase Auth user account
+      if (ownerEmail.trim() && password.trim()) {
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, ownerEmail.trim(), password.trim());
+          await setDoc(doc(db, 'users', cred.user.uid), {
+            uid: cred.user.uid,
+            email: ownerEmail.trim(),
+            displayName: ownerName.trim() || 'Store Owner',
+            role: 'owner',
+            businessId: newStore.businessId,
+            createdAt: serverTimestamp(),
+          }, { merge: true });
+        } catch (authErr) {
+          console.warn('Auth user registration notice:', authErr);
+        }
+      }
 
       if (onCreated) onCreated(newStore);
       onClose();
@@ -277,6 +298,33 @@ export default function NewStoreModal({ onClose, onCreated }) {
                 value={ownerPhone}
                 onChange={(e) => setOwnerPhone(e.target.value)}
                 placeholder="e.g. 0777123456"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                Owner Email (Login Account)
+              </label>
+              <input
+                type="email"
+                value={ownerEmail}
+                onChange={(e) => setOwnerEmail(e.target.value)}
+                placeholder="owner@yourstore.com"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                Login Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min 6 characters"
+                minLength={6}
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
               />
             </div>

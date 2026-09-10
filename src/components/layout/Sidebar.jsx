@@ -19,29 +19,29 @@ import {
   Store,
   Sparkles
 } from 'lucide-react';
-import { canAccessModule, normalizeRole, ROLE_DEFINITIONS } from '../../utils/rbac';
+import { canAccessModule, normalizeRole, ROLE_DEFINITIONS, isModuleAvailableForPlan, getRequiredPlanForModule, PLAN_TIERS } from '../../utils/rbac';
 
 const NAV_ITEMS = [
   { id: 'pos',        label: 'Point of Sale',           icon: ShoppingCart },
   { id: 'inventory',  label: 'Inventory Stock',         icon: Package },
-  { id: 'suppliers',  label: 'Suppliers & Restock',     icon: Building2 },
-  { id: 'marketing',  label: 'WhatsApp Marketing',      icon: MessageCircle },
-  { id: 'finance',    label: 'Finance & Reports',       icon: BarChart3 },
   { id: 'customers',  label: 'Customers & VIP',         icon: HeartHandshake },
-  { id: 'delivery',   label: 'Delivery Logistics',      icon: Truck },
+  { id: 'suppliers',  label: 'Suppliers & Restock',     icon: Building2 },
+  { id: 'finance',    label: 'Finance & Reports',       icon: BarChart3 },
   { id: 'attendance', label: 'Staff Attendance',        icon: Users },
   { id: 'staff',      label: 'Staff Management',        icon: UserCog },
+  { id: 'delivery',   label: 'Delivery Logistics',      icon: Truck },
+  { id: 'marketing',  label: 'WhatsApp Marketing',      icon: MessageCircle },
 ];
 
 const BOTTOM_ITEMS = [
   { id: 'settings',   label: 'Store Settings',          icon: Settings },
 ];
 
-function NavButton({ id, label, icon: Icon, active, isOpen, onClick, highlight = false }) {
+function NavButton({ id, label, icon: Icon, active, isOpen, onClick, highlight = false, isLocked = false, requiredPlan = null }) {
   return (
     <button
       onClick={() => onClick(id)}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
         active
           ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-xs'
           : highlight
@@ -49,8 +49,16 @@ function NavButton({ id, label, icon: Icon, active, isOpen, onClick, highlight =
           : 'text-slate-400 hover:text-white hover:bg-slate-800'
       }`}
     >
-      <Icon className={`w-5 h-5 flex-shrink-0 ${highlight ? 'text-emerald-400' : ''}`} />
-      {isOpen && <span className="truncate">{label}</span>}
+      <div className="flex items-center gap-3 min-w-0">
+        <Icon className={`w-5 h-5 flex-shrink-0 ${highlight ? 'text-emerald-400' : ''}`} />
+        {isOpen && <span className="truncate">{label}</span>}
+      </div>
+      {isLocked && isOpen && (
+        <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/60 font-bold flex items-center gap-0.5 uppercase tracking-wider shrink-0">
+          <Lock className="w-2.5 h-2.5" />
+          <span>{requiredPlan === 'enterprise' ? 'Ent' : 'Growth'}</span>
+        </span>
+      )}
     </button>
   );
 }
@@ -62,12 +70,15 @@ export default function Sidebar() {
 
   const role = normalizeRole(userProfile?.role, currentUser?.email);
   const roleDef = ROLE_DEFINITIONS[role] || ROLE_DEFINITIONS.cashier;
+  const storePlan = currentTenant?.subscriptionPlan || 'starter';
 
-  const filtered = NAV_ITEMS.filter(i => canAccessModule(role, i.id));
-  const bottomFiltered = BOTTOM_ITEMS.filter(i => canAccessModule(role, i.id));
+  const filtered = NAV_ITEMS.filter(i => isSuperAdmin || canAccessModule(role, i.id, 'enterprise'));
+  const bottomFiltered = BOTTOM_ITEMS.filter(i => isSuperAdmin || canAccessModule(role, i.id, 'enterprise'));
 
   const storeName = currentTenant?.businessName || 'RetailOS Liberia';
   const themeColor = currentTenant?.themeColor || '#0ea5e9';
+
+  const planBadgeName = storePlan === 'enterprise' ? 'Enterprise' : storePlan === 'growth' ? 'Growth' : 'Free Forever';
 
   return (
     <aside className={`hidden md:flex flex-col bg-slate-900 border-r border-slate-800 transition-all duration-300 ${isSidebarOpen ? 'w-56' : 'w-16'}`}>
@@ -119,17 +130,23 @@ export default function Sidebar() {
           </div>
         )}
 
-        {filtered.map(item => (
-          <NavButton
-            key={item.id}
-            id={item.id}
-            label={item.label}
-            icon={item.icon}
-            active={activeModule === item.id}
-            isOpen={isSidebarOpen}
-            onClick={setActiveModule}
-          />
-        ))}
+        {filtered.map(item => {
+          const isLocked = !isSuperAdmin && !isModuleAvailableForPlan(storePlan, item.id);
+          const reqPlan = getRequiredPlanForModule(item.id);
+          return (
+            <NavButton
+              key={item.id}
+              id={item.id}
+              label={item.label}
+              icon={item.icon}
+              active={activeModule === item.id}
+              isOpen={isSidebarOpen}
+              onClick={setActiveModule}
+              isLocked={isLocked}
+              requiredPlan={reqPlan}
+            />
+          );
+        })}
       </nav>
 
       {/* Bottom Actions */}
@@ -155,21 +172,24 @@ export default function Sidebar() {
             {isSidebarOpen && (
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-white truncate">{userProfile?.displayName || 'Store Owner'}</p>
-                <div className="flex items-center justify-between gap-1 mt-0.5">
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold border block w-fit ${roleDef.badgeColor}`}>
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold border block ${roleDef.badgeColor}`}>
                     {roleDef.badge}
                   </span>
-                  {!isSuperAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => setRole(role === 'owner' ? 'cashier' : 'owner')}
-                      className="text-[9px] text-cyan-400 hover:text-cyan-300 underline font-semibold cursor-pointer"
-                      title="Toggle between Owner (Full Access) and Cashier (Register only)"
-                    >
-                      {role === 'owner' ? 'Test Cashier' : 'Back to Owner'}
-                    </button>
-                  )}
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-cyan-300 border border-slate-700 font-bold block">
+                    {planBadgeName}
+                  </span>
                 </div>
+                {!isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setRole(role === 'owner' ? 'cashier' : 'owner')}
+                    className="text-[9px] text-cyan-400 hover:text-cyan-300 underline font-semibold mt-1 block"
+                    title="Toggle between Owner (Full Access) and Cashier (Register only)"
+                  >
+                    {role === 'owner' ? 'Preview Cashier View' : 'Back to Store Owner'}
+                  </button>
+                )}
               </div>
             )}
           </div>

@@ -43,7 +43,8 @@ import {
   ArrowLeft,
   Sparkles
 } from 'lucide-react';
-import { canAccessModule, normalizeRole, getDefaultModuleForRole, ROLE_DEFINITIONS } from '../../utils/rbac';
+import { canAccessModule, normalizeRole, getDefaultModuleForRole, ROLE_DEFINITIONS, isModuleAvailableForPlan } from '../../utils/rbac';
+import PlanUpgradeLockView from '../shared/PlanUpgradeLockView';
 
 const MODULE_VIEWS = {
   pos:        POSView,
@@ -75,14 +76,14 @@ const MODULE_LABELS = {
 
 const ALL_MOBILE_MODULES = [
   { id: 'pos',        label: 'Point of Sale',          icon: ShoppingCart },
-  { id: 'delivery',   label: 'Delivery Board',         icon: Truck },
-  { id: 'attendance', label: 'Staff Attendance',        icon: Users },
-  { id: 'customers',  label: 'Customers & VIP',         icon: HeartHandshake },
   { id: 'inventory',  label: 'Inventory Stock',         icon: Package },
-  { id: 'finance',    label: 'Finance & Reports',       icon: BarChart3 },
-  { id: 'marketing',  label: 'WhatsApp Marketing',      icon: MessageCircle },
+  { id: 'customers',  label: 'Customers & VIP',         icon: HeartHandshake },
   { id: 'suppliers',  label: 'Suppliers & Restock',     icon: Building2 },
+  { id: 'finance',    label: 'Finance & Reports',       icon: BarChart3 },
+  { id: 'attendance', label: 'Staff Attendance',        icon: Users },
   { id: 'staff',      label: 'Staff Management',        icon: UserCog },
+  { id: 'delivery',   label: 'Delivery Board',         icon: Truck },
+  { id: 'marketing',  label: 'WhatsApp Marketing',      icon: MessageCircle },
   { id: 'settings',   label: 'Store Settings',          icon: Settings },
   { id: 'superadmin', label: 'Platform Super-Admin',    icon: Sparkles },
 ];
@@ -95,7 +96,7 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
     isSharedTerminal, 
     isTerminalLocked, 
     lockTerminalStaff,
-    isSuperAdmin,
+    isSuperAdmin: isSuperUser,
     currentUser,
     setRole
   } = useAuth();
@@ -104,17 +105,24 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
 
   const userRole = normalizeRole(userProfile?.role, currentUser?.email);
   const roleDef = ROLE_DEFINITIONS[userRole] || ROLE_DEFINITIONS.cashier;
-  const isBlocked = !canAccessModule(userRole, activeModule);
+  const storePlan = currentTenant?.subscriptionPlan || 'starter';
+  const isSuper = isSuperUser || userRole === 'superadmin';
 
-  // Auto-redirect if user opens a module they don't have clearance for
+  // Role permissions check (checks if the user's role allows this module)
+  const isRoleAllowed = isSuper || canAccessModule(userRole, activeModule, 'enterprise');
+
+  // Plan level check (checks if the store's current subscription plan includes this module)
+  const isPlanAllowed = isSuper || isModuleAvailableForPlan(storePlan, activeModule);
+
+  // Auto-redirect only if role is completely disallowed (e.g. counter cashier tries to open settings)
   useEffect(() => {
-    if (!canAccessModule(userRole, activeModule)) {
+    if (!isSuper && !canAccessModule(userRole, activeModule, 'enterprise')) {
       const defaultMod = getDefaultModuleForRole(userRole);
       if (activeModule !== defaultMod) {
         setActiveModule(defaultMod);
       }
     }
-  }, [userRole, activeModule, setActiveModule]);
+  }, [userRole, activeModule, setActiveModule, isSuper]);
 
   let ActiveView = MODULE_VIEWS[activeModule] || POSView;
 
@@ -228,7 +236,7 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto pb-20 md:pb-4">
-          {isBlocked ? (
+          {!isRoleAllowed ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
               <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">
                 <ShieldAlert className="w-8 h-8 text-amber-400" />
@@ -244,6 +252,8 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
                 Return to {MODULE_LABELS[getDefaultModuleForRole(userRole)]}
               </button>
             </div>
+          ) : !isPlanAllowed ? (
+            <PlanUpgradeLockView moduleId={activeModule} />
           ) : (
             <ActiveView onEnterStore={() => setActiveModule('pos')} />
           )}
@@ -284,9 +294,10 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
             </div>
 
             <div className="flex-1 py-3 space-y-1 overflow-y-auto">
-              {ALL_MOBILE_MODULES.filter(m => canAccessModule(userRole, m.id)).map(item => {
+              {ALL_MOBILE_MODULES.filter(m => isSuper || canAccessModule(userRole, m.id, 'enterprise')).map(item => {
                 const Icon = item.icon;
                 const active = activeModule === item.id;
+                const isLocked = !isSuper && !isModuleAvailableForPlan(storePlan, item.id);
                 return (
                   <button
                     key={item.id}
@@ -294,14 +305,22 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
                       setActiveModule(item.id);
                       setMobileDrawerOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                       active
                         ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                   >
-                    <Icon className="w-5 h-5 flex-shrink-0" />
-                    <span>{item.label}</span>
+                    <div className="flex items-center gap-3">
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <span>{item.label}</span>
+                    </div>
+                    {isLocked && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/60 font-bold flex items-center gap-1">
+                        <Lock className="w-2.5 h-2.5" />
+                        <span>Upgrade</span>
+                      </span>
+                    )}
                   </button>
                 );
               })}

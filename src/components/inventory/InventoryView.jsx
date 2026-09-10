@@ -6,8 +6,10 @@ import CSVImport from './CSVImport';
 import StockAuditModal from './StockAuditModal';
 import RestockOrderModal from '../suppliers/RestockOrderModal';
 import { useAuth } from '../../hooks/useAuth';
+import { useTenant } from '../../contexts/TenantContext';
 import { isOwner, isManager } from '../../utils/rbac';
-import { Store, Warehouse, Upload, ClipboardCheck } from 'lucide-react';
+import { Store, Warehouse, Upload, ClipboardCheck, Lock } from 'lucide-react';
+import PlanUpgradeLockView from '../shared/PlanUpgradeLockView';
 
 const TABS = [
   { id: 'showroom', label: 'Showroom Shelves', icon: Store },
@@ -20,30 +22,42 @@ export default function InventoryView() {
   const [restockProduct, setRestockProduct] = useState(null);
   const [showImport, setShowImport] = useState(false);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
-  const { userProfile, currentUser } = useAuth();
+  const { userProfile, currentUser, isSuperAdmin } = useAuth();
+  const { currentTenant } = useTenant();
 
   const isOwnerUser = isOwner(userProfile?.role);
   const canImport = isOwnerUser || isManager(userProfile?.role);
+  const storePlan = currentTenant?.subscriptionPlan || 'starter';
+  const isStoreroomLocked = !isSuperAdmin && storePlan === 'starter';
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
       {/* Tabs + Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 bg-slate-900 border border-slate-800 p-1 rounded-2xl">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                tab === id
-                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              <span>{label}</span>
-            </button>
-          ))}
+          {TABS.map(({ id, label, icon: Icon }) => {
+            const isTabLocked = id === 'storeroom' && isStoreroomLocked;
+            return (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  tab === id
+                    ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{label}</span>
+                {isTabLocked && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-950/70 text-amber-300 border border-amber-800/60 flex items-center gap-0.5">
+                    <Lock className="w-2.5 h-2.5" />
+                    <span>Growth</span>
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {canImport && (
@@ -95,10 +109,14 @@ export default function InventoryView() {
           />
         )}
         {tab === 'storeroom' && (
-          <StoreroomTable 
-            onTransferClick={setTransferProduct} 
-            onRestockClick={isOwnerUser ? setRestockProduct : null}
-          />
+          isStoreroomLocked ? (
+            <PlanUpgradeLockView moduleId="storeroom" />
+          ) : (
+            <StoreroomTable 
+              onTransferClick={setTransferProduct} 
+              onRestockClick={isOwnerUser ? setRestockProduct : null}
+            />
+          )
         )}
       </div>
 
