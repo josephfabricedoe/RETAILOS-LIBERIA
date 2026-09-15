@@ -55,8 +55,15 @@ export default function BarcodeScannerModal({
   const isStoppingRef = useRef(false);
   const containerId = 'retail-modal-barcode-reader';
 
+  const nativeDetectorRef = useRef(null);
+  const nativeIntervalRef = useRef(null);
+
   const stopScanner = async () => {
     isStoppingRef.current = true;
+    if (nativeIntervalRef.current) {
+      clearInterval(nativeIntervalRef.current);
+      nativeIntervalRef.current = null;
+    }
     if (activeTrackRef.current) {
       try {
         await activeTrackRef.current.applyConstraints({ advanced: [{ torch: false }] });
@@ -74,6 +81,23 @@ export default function BarcodeScannerModal({
       }
     } catch (e) {}
     isStoppingRef.current = false;
+  };
+
+  const handleDetectedCode = (decodedText) => {
+    if (!decodedText || isStoppingRef.current) return;
+    isStoppingRef.current = true;
+    if (nativeIntervalRef.current) {
+      clearInterval(nativeIntervalRef.current);
+      nativeIntervalRef.current = null;
+    }
+    playBeep();
+    setScannedCode(decodedText);
+    setTimeout(() => {
+      stopScanner().then(() => {
+        onScan(decodedText);
+        onClose();
+      });
+    }, 400);
   };
 
   const startScanner = async (targetCamId = null) => {
@@ -117,7 +141,6 @@ export default function BarcodeScannerModal({
       try {
         cameras = await Html5Qrcode.getCameras();
         if (cameras && cameras.length > 0) {
-          // Sort to prioritize rear/back/environment cameras first
           const rearCams = cameras.filter(c => 
             /back|rear|environment|wide|main|0/i.test(c.label) || !/front|user|selfie/i.test(c.label)
           );
@@ -128,27 +151,14 @@ export default function BarcodeScannerModal({
         console.warn('Could not enumerate cameras:', camErr);
       }
 
-      let cameraIdOrConfig = { facingMode: 'environment' };
-      if (targetCamId) {
-        cameraIdOrConfig = targetCamId;
-      } else if (cameras && cameras.length > 0) {
-        const backCam = cameras.find((c) =>
-          /back|rear|environment|wide|main/i.test(c.label)
-        );
-        cameraIdOrConfig = backCam ? backCam.id : cameras[0].id;
-      }
+      // If targetCamId is passed, use it; otherwise use default environment facingMode for maximum autofocus compatibility
+      const cameraConfig = targetCamId ? targetCamId : { facingMode: 'environment' };
 
+      // NOTE: We do NOT pass qrbox so html5-qrcode scans the FULL 100% video frame without cropping!
       await qr.start(
-        cameraIdOrConfig,
+        cameraConfig,
         {
           fps: 25,
-          qrbox: (viewfinderWidth, viewfinderHeight) => {
-            const minDim = Math.min(viewfinderWidth, viewfinderHeight);
-            return {
-              width: Math.floor(minDim * 0.88),
-              height: Math.floor(minDim * 0.60),
-            };
-          },
           aspectRatio: 1.0,
           videoConstraints: {
             facingMode: { ideal: 'environment' },
@@ -157,15 +167,7 @@ export default function BarcodeScannerModal({
           },
         },
         (decodedText) => {
-          if (!decodedText || isStoppingRef.current) return;
-          playBeep();
-          setScannedCode(decodedText);
-          setTimeout(() => {
-            stopScanner().then(() => {
-              onScan(decodedText);
-              onClose();
-            });
-          }, 450);
+          handleDetectedCode(decodedText);
         },
         () => {}
       );
@@ -201,6 +203,34 @@ export default function BarcodeScannerModal({
             // Re-apply current zoom if already set
             if (zoomLevel > 1) {
               applyZoom(zoomLevel);
+            }
+          }
+
+          // 4. Native Chrome/Android BarcodeDetector engine (Runs in parallel on raw full-res video!)
+          if ('BarcodeDetector' in window) {
+            try {
+              const supportedFormats = await window.BarcodeDetector.getSupportedFormats();
+              const desired = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'];
+              const activeFormats = desired.filter(f => supportedFormats.includes(f));
+              if (activeFormats.length > 0) {
+                const nativeDetector = new window.BarcodeDetector({ formats: activeFormats });
+                nativeDetectorRef.current = nativeDetector;
+
+                nativeIntervalRef.current = setInterval(async () => {
+                  if (isStoppingRef.current || !videoEl || videoEl.readyState < 2) return;
+                  try {
+                    const detected = await nativeDetector.detect(videoEl);
+                    if (detected && detected.length > 0) {
+                      const code = detected[0].rawValue;
+                      if (code) {
+                        handleDetectedCode(code);
+                      }
+                    }
+                  } catch (e) {}
+                }, 100);
+              }
+            } catch (detectorErr) {
+              console.warn('Native BarcodeDetector init note:', detectorErr);
             }
           }
         }
@@ -357,15 +387,15 @@ export default function BarcodeScannerModal({
         >
           <div id={containerId} className="w-full h-full" />
 
-          {/* 4 Corner Targeting Reticles */}
-          <div className="absolute inset-8 sm:inset-10 pointer-events-none flex flex-col justify-between z-10 opacity-80">
+          {/* Full-view Targeting Framing */}
+          <div className="absolute inset-4 pointer-events-none flex flex-col justify-between z-10 opacity-70">
             <div className="flex justify-between">
-              <div className="w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl shadow-lg" />
-              <div className="w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl shadow-lg" />
+              <div className="w-6 h-6 border-t-2 border-l-2 border-emerald-400 rounded-tl-lg shadow-sm" />
+              <div className="w-6 h-6 border-t-2 border-r-2 border-emerald-400 rounded-tr-lg shadow-sm" />
             </div>
             <div className="flex justify-between">
-              <div className="w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl shadow-lg" />
-              <div className="w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-xl shadow-lg" />
+              <div className="w-6 h-6 border-b-2 border-l-2 border-emerald-400 rounded-bl-lg shadow-sm" />
+              <div className="w-6 h-6 border-b-2 border-r-2 border-emerald-400 rounded-br-lg shadow-sm" />
             </div>
           </div>
 
@@ -389,7 +419,7 @@ export default function BarcodeScannerModal({
 
           {/* Top Control Overlay: Flashlight & Lens Switcher */}
           <div className="absolute top-3 inset-x-3 z-20 flex items-center justify-between pointer-events-auto">
-            {/* Multi-lens Switcher (If multiple rear cameras exist) */}
+            {/* Multi-lens Switcher */}
             {availableCameras.length > 1 ? (
               <button
                 type="button"
@@ -397,16 +427,16 @@ export default function BarcodeScannerModal({
                   e.stopPropagation();
                   switchCameraLens();
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 text-white text-xs font-semibold backdrop-blur-md shadow-lg transition-all"
-                title="Switch to Macro / Wide Camera Lens"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/65 hover:bg-black/85 border border-white/20 text-white text-xs font-bold backdrop-blur-md shadow-lg transition-all active:scale-95"
+                title="Switch Camera (Main 1x vs Alternate)"
               >
                 <RotateCw className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Lens {currentCamIndex + 1}/{availableCameras.length}</span>
+                <span>{currentCamIndex === 0 ? 'Main Cam (1x)' : `Cam ${currentCamIndex + 1} (Tap to Switch)`}</span>
               </button>
             ) : (
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 border border-white/10 text-[11px] text-emerald-300 font-medium backdrop-blur-xs">
                 <Focus className="w-3 h-3 text-emerald-400" />
-                <span>Continuous Focus</span>
+                <span>Full-Frame Auto-Detect</span>
               </div>
             )}
 
