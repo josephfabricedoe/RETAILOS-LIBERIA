@@ -46,13 +46,15 @@
 }
 
 /* html5-qrcode: ensure container and video are seamless */
-#retail-modal-barcode-reader {
+#retail-modal-barcode-reader,
+#retail-quagga-reader {
   width: 100% !important;
   height: 100% !important;
   position: relative !important;
   overflow: hidden !important;
 }
-#retail-modal-barcode-reader video {
+#retail-modal-barcode-reader video,
+#retail-quagga-reader video {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
@@ -64,6 +66,15 @@
 }
 #retail-modal-barcode-reader canvas {
   display: none !important;
+}
+#retail-quagga-reader canvas.drawingBuffer {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  pointer-events: none !important;
 }
 
 @keyframes focusPulse {

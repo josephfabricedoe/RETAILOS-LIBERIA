@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import Quagga from '@ericblade/quagga2';
 import { 
   Zap, 
   ZapOff, 
@@ -9,7 +9,10 @@ import {
   RotateCw, 
   Barcode, 
   ZoomIn, 
-  Focus
+  Focus,
+  Eye,
+  Check,
+  Sparkles
 } from 'lucide-react';
 
 function playBeep() {
@@ -19,20 +22,61 @@ function playBeep() {
     const gain = ctx.createGain();
     osc.type = 'sine';
     osc.frequency.setValueAtTime(1850, ctx.currentTime);
-    gain.gain.setValueAtTime(0.2, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.14);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start();
-    osc.stop(ctx.currentTime + 0.12);
+    osc.stop(ctx.currentTime + 0.14);
   } catch (e) {}
+}
+
+// Calculate frame sharpness / Laplacian variance
+function assessSharpness(ctx, width, height) {
+  try {
+    if (!ctx || width < 50 || height < 50) return 20;
+    const sampleW = Math.min(160, width);
+    const sampleH = Math.min(160, height);
+    const startX = Math.floor((width - sampleW) / 2);
+    const startY = Math.floor((height - sampleH) / 2);
+    const imgData = ctx.getImageData(startX, startY, sampleW, sampleH);
+    const d = imgData.data;
+    let diffSum = 0;
+    let count = 0;
+    for (let y = 1; y < sampleH - 1; y += 4) {
+      for (let x = 1; x < sampleW - 1; x += 4) {
+        const i = (y * sampleW + x) * 4;
+        const lum = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+        const rightLum = d[i + 4] * 0.299 + d[i + 5] * 0.587 + d[i + 6] * 0.114;
+        const downLum = d[i + sampleW * 4] * 0.299 + d[i + sampleW * 4 + 1] * 0.587 + d[i + sampleW * 4 + 2] * 0.114;
+        diffSum += Math.abs(lum - rightLum) + Math.abs(lum - downLum);
+        count++;
+      }
+    }
+    return count > 0 ? (diffSum / count) : 20;
+  } catch (e) {
+    return 20;
+  }
+}
+
+// Format numbers nicely (e.g. 6 294015 175217)
+function formatBarcodeNumbers(code) {
+  if (!code) return '';
+  const str = String(code).trim();
+  if (str.length === 13) {
+    return `${str[0]} ${str.slice(1, 7)} ${str.slice(7)}`;
+  }
+  if (str.length === 12) {
+    return `${str[0]} ${str.slice(1, 6)} ${str.slice(6, 11)} ${str[11]}`;
+  }
+  return str;
 }
 
 export default function BarcodeScannerModal({
   isOpen,
   onClose,
   onScan,
-  title = 'Scan Barcode',
+  title = 'Smart Barcode Scanner',
 }) {
   const [torchOn, setTorchOn] = useState(false);
   const [hasTorch, setHasTorch] = useState(false);
@@ -41,22 +85,23 @@ export default function BarcodeScannerModal({
   const [errorInfo, setErrorInfo] = useState(null);
   const [isStarting, setIsStarting] = useState(false);
 
-  // Multi-camera / Lens switching state
+  // Vision Intelligence state
+  const [linesFound, setLinesFound] = useState(false);
+  const [focusQuality, setFocusQuality] = useState('good'); // 'blurry' | 'good'
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [focusIndicator, setFocusIndicator] = useState({ x: 0, y: 0, active: false });
+
+  // Camera devices
   const [availableCameras, setAvailableCameras] = useState([]);
   const [currentCamIndex, setCurrentCamIndex] = useState(0);
 
-  // Zoom & Close-up Focus state
-  const [zoomLevel, setZoomLevel] = useState(1);
-  const [hasHardwareZoom, setHasHardwareZoom] = useState(false);
-  const [focusIndicator, setFocusIndicator] = useState({ x: 0, y: 0, active: false });
-
-  const html5QrCodeRef = useRef(null);
+  const containerRef = useRef(null);
   const activeTrackRef = useRef(null);
   const isStoppingRef = useRef(false);
-  const containerId = 'retail-modal-barcode-reader';
-
   const nativeDetectorRef = useRef(null);
   const nativeIntervalRef = useRef(null);
+  const lastSharpnessCheckRef = useRef(0);
+  const containerId = 'retail-quagga-reader';
 
   const stopScanner = async () => {
     isStoppingRef.current = true;
@@ -70,41 +115,45 @@ export default function BarcodeScannerModal({
       } catch (e) {}
       activeTrackRef.current = null;
     }
-
     try {
-      if (html5QrCodeRef.current) {
-        if (html5QrCodeRef.current.isScanning) {
-          await html5QrCodeRef.current.stop();
-        }
-        await html5QrCodeRef.current.clear();
-        html5QrCodeRef.current = null;
-      }
+      Quagga.offDetected();
+      Quagga.offProcessed();
+      await Quagga.stop();
     } catch (e) {}
     isStoppingRef.current = false;
   };
 
-  const handleDetectedCode = (decodedText) => {
-    if (!decodedText || isStoppingRef.current) return;
+  const handleBarcodeCaptured = (rawCode) => {
+    if (!rawCode || isStoppingRef.current) return;
+    const clean = String(rawCode).trim();
+    if (!clean) return;
+
     isStoppingRef.current = true;
     if (nativeIntervalRef.current) {
       clearInterval(nativeIntervalRef.current);
       nativeIntervalRef.current = null;
     }
+
     playBeep();
-    setScannedCode(decodedText);
+    if (navigator.vibrate) {
+      try { navigator.vibrate([60, 40, 60]); } catch (e) {}
+    }
+
+    setScannedCode(clean);
     setTimeout(() => {
       stopScanner().then(() => {
-        onScan(decodedText);
+        onScan(clean);
         onClose();
       });
-    }, 400);
+    }, 550);
   };
 
-  const startScanner = async (targetCamId = null) => {
+  const startScanner = async (targetDeviceId = null) => {
     if (isStarting || isStoppingRef.current) return;
     setIsStarting(true);
     setErrorInfo(null);
     setScannedCode('');
+    setLinesFound(false);
 
     try {
       await stopScanner();
@@ -115,132 +164,170 @@ export default function BarcodeScannerModal({
         setIsStarting(false);
         return;
       }
+      el.innerHTML = '';
 
-      // Initialize Html5Qrcode with hardware BarcodeDetector acceleration if supported
-      const qr = new Html5Qrcode(containerId, {
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.QR_CODE,
-          Html5QrcodeSupportedFormats.ITF,
-          Html5QrcodeSupportedFormats.DATA_MATRIX,
-        ],
-        verbose: false,
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true,
-        },
-      });
-      html5QrCodeRef.current = qr;
-
-      // Discover camera devices
-      let cameras = [];
+      // Discover back cameras
       try {
-        cameras = await Html5Qrcode.getCameras();
-        if (cameras && cameras.length > 0) {
-          const rearCams = cameras.filter(c => 
-            /back|rear|environment|wide|main|0/i.test(c.label) || !/front|user|selfie/i.test(c.label)
+        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoDevices = devices.filter(d => d.kind === 'videoinput');
+          const rearDevices = videoDevices.filter(d => 
+            /back|rear|environment|wide|main|0/i.test(d.label) || !/front|user|selfie/i.test(d.label)
           );
-          const finalCams = rearCams.length > 0 ? rearCams : cameras;
-          setAvailableCameras(finalCams);
+          setAvailableCameras(rearDevices.length > 0 ? rearDevices : videoDevices);
         }
-      } catch (camErr) {
-        console.warn('Could not enumerate cameras:', camErr);
-      }
+      } catch (e) {}
 
-      // If targetCamId is passed, use it; otherwise use default environment facingMode for maximum autofocus compatibility
-      const cameraConfig = targetCamId ? targetCamId : { facingMode: 'environment' };
+      const cameraConstraints = targetDeviceId
+        ? { deviceId: { exact: targetDeviceId } }
+        : { facingMode: 'environment' };
 
-      // NOTE: We do NOT pass qrbox so html5-qrcode scans the FULL 100% video frame without cropping!
-      await qr.start(
-        cameraConfig,
-        {
-          fps: 25,
-          aspectRatio: 1.0,
-          videoConstraints: {
-            facingMode: { ideal: 'environment' },
-            width: { min: 640, ideal: 1920, max: 2560 },
-            height: { min: 480, ideal: 1080, max: 1440 },
+      await new Promise((resolve, reject) => {
+        Quagga.init({
+          inputStream: {
+            name: 'Live',
+            type: 'LiveStream',
+            target: el,
+            constraints: {
+              ...cameraConstraints,
+              width: { min: 640, ideal: 1280, max: 1920 },
+              height: { min: 480, ideal: 720, max: 1080 },
+            },
+            area: {
+              top: '0%',
+              right: '0%',
+              left: '0%',
+              bottom: '0%',
+            },
           },
-        },
-        (decodedText) => {
-          handleDetectedCode(decodedText);
-        },
-        () => {}
-      );
+          locator: {
+            patchSize: 'medium',
+            halfSample: true,
+          },
+          numOfWorkers: 2,
+          decoder: {
+            readers: [
+              'ean_reader',
+              'ean_8_reader',
+              'upc_reader',
+              'upc_e_reader',
+              'code_128_reader',
+              'code_39_reader',
+            ],
+          },
+          locate: true,
+        }, (err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      });
 
-      // Inspect video track for autofocus, macro, zoom, and torch
-      try {
-        const videoEl = document.querySelector(`#${containerId} video`);
-        if (videoEl && videoEl.srcObject) {
-          const track = videoEl.srcObject.getVideoTracks()[0];
-          if (track) {
-            activeTrackRef.current = track;
-            const caps = track.getCapabilities ? track.getCapabilities() : {};
+      Quagga.start();
 
-            // 1. Force continuous autofocus so closer objects auto-focus
-            if (caps.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
-              try {
-                await track.applyConstraints({
-                  advanced: [{ focusMode: 'continuous' }],
-                });
-              } catch (e) {}
-            }
+      // Hook Quagga processed frames: draw line tracking boxes and check sharpness
+      Quagga.onProcessed((result) => {
+        if (isStoppingRef.current) return;
+        const drawingCtx = Quagga.canvas && Quagga.canvas.ctx ? Quagga.canvas.ctx.overlay : null;
+        const drawingCanvas = Quagga.canvas && Quagga.canvas.dom ? Quagga.canvas.dom.overlay : null;
 
-            // 2. Detect hardware zoom support
-            if (caps.zoom) {
-              setHasHardwareZoom(true);
-            }
+        if (result && drawingCtx && drawingCanvas) {
+          drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
 
-            // 3. Detect torch support
-            if (caps.torch) {
-              setHasTorch(true);
-            }
-
-            // Re-apply current zoom if already set
-            if (zoomLevel > 1) {
-              applyZoom(zoomLevel);
-            }
+          // 1. Draw candidate barcode line boxes
+          if (result.boxes) {
+            result.boxes.filter(box => box !== result.box).forEach(box => {
+              Quagga.ImageDebug.drawPath(box, { x: 0, y: 1 }, drawingCtx, { 
+                color: 'rgba(52, 211, 153, 0.4)', 
+                lineWidth: 2 
+              });
+            });
           }
 
-          // 4. Native Chrome/Android BarcodeDetector engine (Runs in parallel on raw full-res video!)
-          if ('BarcodeDetector' in window) {
-            try {
-              const supportedFormats = await window.BarcodeDetector.getSupportedFormats();
-              const desired = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'];
-              const activeFormats = desired.filter(f => supportedFormats.includes(f));
-              if (activeFormats.length > 0) {
-                const nativeDetector = new window.BarcodeDetector({ formats: activeFormats });
-                nativeDetectorRef.current = nativeDetector;
+          // 2. Draw best matching barcode bounding box (The green identified lines!)
+          if (result.box) {
+            setLinesFound(true);
+            Quagga.ImageDebug.drawPath(result.box, { x: 0, y: 1 }, drawingCtx, { 
+              color: '#10b981', 
+              lineWidth: 3.5 
+            });
+          } else {
+            setLinesFound(false);
+          }
 
-                nativeIntervalRef.current = setInterval(async () => {
-                  if (isStoppingRef.current || !videoEl || videoEl.readyState < 2) return;
-                  try {
-                    const detected = await nativeDetector.detect(videoEl);
-                    if (detected && detected.length > 0) {
-                      const code = detected[0].rawValue;
-                      if (code) {
-                        handleDetectedCode(code);
-                      }
-                    }
-                  } catch (e) {}
-                }, 100);
-              }
-            } catch (detectorErr) {
-              console.warn('Native BarcodeDetector init note:', detectorErr);
-            }
+          // 3. Draw scan line through the barcode lines
+          if (result.codeResult && result.codeResult.code) {
+            Quagga.ImageDebug.drawPath(result.line, { x: 'x', y: 'y' }, drawingCtx, { 
+              color: '#06b6d4', 
+              lineWidth: 4 
+            });
+          }
+
+          // 4. Sharpness test periodically (every 400ms)
+          const now = Date.now();
+          if (now - lastSharpnessCheckRef.current > 400) {
+            lastSharpnessCheckRef.current = now;
+            const score = assessSharpness(drawingCtx, drawingCanvas.width, drawingCanvas.height);
+            setFocusQuality(score < 9.5 ? 'blurry' : 'good');
           }
         }
-      } catch (e) {
-        console.warn('Track capability inspection note:', e);
+      });
+
+      // Hook Quagga detection
+      Quagga.onDetected((result) => {
+        if (result && result.codeResult && result.codeResult.code) {
+          handleBarcodeCaptured(result.codeResult.code);
+        }
+      });
+
+      // Get active camera track for continuous autofocus and zoom
+      try {
+        const track = Quagga.CameraAccess.getActiveTrack();
+        if (track) {
+          activeTrackRef.current = track;
+          const caps = track.getCapabilities ? track.getCapabilities() : {};
+
+          if (caps.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+            try {
+              await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+            } catch (e) {}
+          }
+          if (caps.torch) {
+            setHasTorch(true);
+          }
+        }
+      } catch (e) {}
+
+      // Parallel Hardware BarcodeDetector on raw video element (GPU accelerated on Chrome Android)
+      if ('BarcodeDetector' in window) {
+        try {
+          const supported = await window.BarcodeDetector.getSupportedFormats();
+          const active = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'].filter(f => supported.includes(f));
+          if (active.length > 0) {
+            const nativeDetector = new window.BarcodeDetector({ formats: active });
+            nativeDetectorRef.current = nativeDetector;
+
+            nativeIntervalRef.current = setInterval(async () => {
+              if (isStoppingRef.current) return;
+              const videoEl = el.querySelector('video');
+              if (videoEl && videoEl.readyState >= 2) {
+                try {
+                  const detected = await nativeDetector.detect(videoEl);
+                  if (detected && detected.length > 0 && detected[0].rawValue) {
+                    handleBarcodeCaptured(detected[0].rawValue);
+                  }
+                } catch (e) {}
+              }
+            }, 100);
+          }
+        } catch (e) {}
       }
 
     } catch (err) {
-      console.warn('Camera start error:', err);
-      setErrorInfo(err.message || 'Could not start camera. Enter barcode manually.');
+      console.warn('Scanner init error:', err);
+      setErrorInfo(err.message || 'Could not start camera. Enter barcode numbers below.');
     } finally {
       setIsStarting(false);
     }
@@ -255,18 +342,13 @@ export default function BarcodeScannerModal({
       try {
         const caps = track.getCapabilities ? track.getCapabilities() : {};
         if (caps.zoom) {
-          const minZ = caps.zoom.min || 1;
-          const maxZ = caps.zoom.max || 5;
-          const clamped = Math.max(minZ, Math.min(targetZoom, maxZ));
+          const clamped = Math.max(caps.zoom.min || 1, Math.min(targetZoom, caps.zoom.max || 5));
           await track.applyConstraints({ advanced: [{ zoom: clamped }] });
           hardwareApplied = true;
         }
-      } catch (e) {
-        console.warn('Hardware zoom constraint note:', e);
-      }
+      } catch (e) {}
     }
 
-    // Apply smooth CSS digital zoom fallback if hardware zoom wasn't accepted
     const videoEl = document.querySelector(`#${containerId} video`);
     if (videoEl) {
       if (!hardwareApplied && targetZoom > 1) {
@@ -290,46 +372,29 @@ export default function BarcodeScannerModal({
     if (availableCameras.length <= 1) return;
     const nextIndex = (currentCamIndex + 1) % availableCameras.length;
     setCurrentCamIndex(nextIndex);
-    await startScanner(availableCameras[nextIndex].id);
+    await startScanner(availableCameras[nextIndex].deviceId);
   };
 
   const handleTapToFocus = async (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const relX = x / rect.width;
-    const relY = y / rect.height;
 
     setFocusIndicator({ x, y, active: true });
-    setTimeout(() => {
-      setFocusIndicator(prev => ({ ...prev, active: false }));
-    }, 1000);
+    setTimeout(() => setFocusIndicator(prev => ({ ...prev, active: false })), 900);
 
     if (navigator.vibrate) {
-      try { navigator.vibrate(35); } catch (e) {}
+      try { navigator.vibrate(30); } catch (e) {}
     }
 
     const track = activeTrackRef.current;
     if (track && track.applyConstraints) {
       try {
         const caps = track.getCapabilities ? track.getCapabilities() : {};
-        const adv = [];
-        if (caps.focusMode && Array.isArray(caps.focusMode)) {
-          if (caps.focusMode.includes('continuous')) {
-            adv.push({ focusMode: 'continuous' });
-          } else if (caps.focusMode.includes('single-shot')) {
-            adv.push({ focusMode: 'single-shot' });
-          }
+        if (caps.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
         }
-        if (caps.pointsOfInterest) {
-          adv.push({ pointsOfInterest: [{ x: relX, y: relY }] });
-        }
-        if (adv.length > 0) {
-          await track.applyConstraints({ advanced: adv });
-        }
-      } catch (err) {
-        console.warn('Refocus error:', err);
-      }
+      } catch (e) {}
     }
   };
 
@@ -346,11 +411,7 @@ export default function BarcodeScannerModal({
   const handleManualSubmit = (e) => {
     e.preventDefault();
     if (manualInput.trim()) {
-      playBeep();
-      stopScanner().then(() => {
-        onScan(manualInput.trim());
-        onClose();
-      });
+      handleBarcodeCaptured(manualInput.trim());
     }
   };
 
@@ -362,13 +423,13 @@ export default function BarcodeScannerModal({
         
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-850">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 flex-shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 flex-shrink-0 shadow-sm">
               <Barcode className="w-4 h-4" />
             </div>
             <div className="min-w-0">
               <h3 className="font-bold text-white text-sm truncate">{title}</h3>
-              <p className="text-[11px] text-slate-400 font-medium truncate">Tap screen or zoom if close object blurs</p>
+              <p className="text-[11px] text-slate-400 font-medium truncate">Line-tracking & number capture engine</p>
             </div>
           </div>
           <button
@@ -380,87 +441,92 @@ export default function BarcodeScannerModal({
           </button>
         </div>
 
-        {/* Camera Viewfinder with Tap-To-Focus */}
+        {/* Viewfinder with Live Line-Tracking */}
         <div 
           onClick={handleTapToFocus}
           className="relative w-full aspect-square bg-black overflow-hidden flex items-center justify-center cursor-crosshair select-none"
         >
-          <div id={containerId} className="w-full h-full" />
+          {/* Quagga2 Live Video & Overlay Canvas Container */}
+          <div id={containerId} ref={containerRef} className="w-full h-full" />
 
-          {/* Full-view Targeting Framing */}
-          <div className="absolute inset-4 pointer-events-none flex flex-col justify-between z-10 opacity-70">
-            <div className="flex justify-between">
-              <div className="w-6 h-6 border-t-2 border-l-2 border-emerald-400 rounded-tl-lg shadow-sm" />
-              <div className="w-6 h-6 border-t-2 border-r-2 border-emerald-400 rounded-tr-lg shadow-sm" />
-            </div>
-            <div className="flex justify-between">
-              <div className="w-6 h-6 border-b-2 border-l-2 border-emerald-400 rounded-bl-lg shadow-sm" />
-              <div className="w-6 h-6 border-b-2 border-r-2 border-emerald-400 rounded-br-lg shadow-sm" />
-            </div>
-          </div>
-
-          {/* Animated dynamic red/cyan/emerald laser line */}
+          {/* Dynamic Laser Scanning Line */}
           <div className="scanner-line z-10" />
 
-          {/* Tap-To-Focus Ring */}
+          {/* Tap-To-Focus Target */}
           {focusIndicator.active && (
             <div
               className="absolute pointer-events-none focus-reticle z-30 flex flex-col items-center justify-center"
               style={{ left: `${focusIndicator.x}px`, top: `${focusIndicator.y}px` }}
             >
-              <div className="w-14 h-14 border-2 border-emerald-400 rounded-xl shadow-2xl flex items-center justify-center bg-emerald-500/10 backdrop-blur-2xs">
+              <div className="w-14 h-14 border-2 border-emerald-400 rounded-xl shadow-2xl flex items-center justify-center bg-emerald-500/15 backdrop-blur-2xs">
                 <div className="w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
               </div>
-              <span className="text-[10px] font-bold text-emerald-300 bg-black/75 px-1.5 py-0.5 rounded-full mt-1 border border-emerald-500/30">
-                Focusing...
+              <span className="text-[10px] font-black text-emerald-300 bg-black/80 px-2 py-0.5 rounded-full mt-1 border border-emerald-500/40 uppercase tracking-wider">
+                Refocusing
               </span>
             </div>
           )}
 
-          {/* Top Control Overlay: Flashlight & Lens Switcher */}
+          {/* Top Status & Controls Overlay */}
           <div className="absolute top-3 inset-x-3 z-20 flex items-center justify-between pointer-events-auto">
-            {/* Multi-lens Switcher */}
-            {availableCameras.length > 1 ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  switchCameraLens();
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/65 hover:bg-black/85 border border-white/20 text-white text-xs font-bold backdrop-blur-md shadow-lg transition-all active:scale-95"
-                title="Switch Camera (Main 1x vs Alternate)"
-              >
-                <RotateCw className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{currentCamIndex === 0 ? 'Main Cam (1x)' : `Cam ${currentCamIndex + 1} (Tap to Switch)`}</span>
-              </button>
-            ) : (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 border border-white/10 text-[11px] text-emerald-300 font-medium backdrop-blur-xs">
-                <Focus className="w-3 h-3 text-emerald-400" />
-                <span>Full-Frame Auto-Detect</span>
-              </div>
-            )}
+            {/* Live Barcode Line & Focus Status Pill */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/75 border border-white/20 text-xs font-bold backdrop-blur-md shadow-lg">
+              {linesFound ? (
+                <div className="flex items-center gap-1.5 text-emerald-400 animate-pulse">
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Lines Identified</span>
+                </div>
+              ) : focusQuality === 'blurry' ? (
+                <div className="flex items-center gap-1.5 text-amber-300">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                  <span>Hold ~15cm away</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-emerald-300">
+                  <Focus className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>In Focus</span>
+                </div>
+              )}
+            </div>
 
-            {/* Torch toggle button */}
-            {hasTorch && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleTorch();
-                }}
-                className={`p-2.5 rounded-full border shadow-lg transition-all ${
-                  torchOn
-                    ? 'bg-amber-400 border-amber-300 text-slate-950 scale-110 shadow-amber-400/50'
-                    : 'bg-black/60 border-white/20 text-white hover:bg-black/80 backdrop-blur-md'
-                }`}
-                title={torchOn ? 'Turn Off Flashlight' : 'Turn On Flashlight'}
-              >
-                {torchOn ? <Zap className="w-4 h-4 fill-current" /> : <ZapOff className="w-4 h-4" />}
-              </button>
-            )}
+            {/* Top Right: Flashlight & Camera Switcher */}
+            <div className="flex items-center gap-2">
+              {availableCameras.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    switchCameraLens();
+                  }}
+                  className="px-2.5 py-1.5 rounded-full bg-black/65 hover:bg-black/85 border border-white/20 text-white text-xs font-bold backdrop-blur-md shadow-lg flex items-center gap-1"
+                  title="Switch Camera Sensor"
+                >
+                  <RotateCw className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Cam {currentCamIndex + 1}</span>
+                </button>
+              )}
+
+              {hasTorch && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleTorch();
+                  }}
+                  className={`p-2 rounded-full border shadow-lg transition-all ${
+                    torchOn
+                      ? 'bg-amber-400 border-amber-300 text-slate-950 scale-110 shadow-amber-400/50'
+                      : 'bg-black/65 border-white/20 text-white hover:bg-black/85 backdrop-blur-md'
+                  }`}
+                  title={torchOn ? 'Turn Off Flashlight' : 'Turn On Flashlight'}
+                >
+                  {torchOn ? <Zap className="w-4 h-4 fill-current" /> : <ZapOff className="w-4 h-4" />}
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Bottom Control Overlay: 1x / 1.5x / 2x Macro / 3x Zoom Controls */}
+          {/* Bottom Zoom Preset Toolbar: 1x, 1.5x, 2x Macro, 3x */}
           <div 
             onClick={(e) => e.stopPropagation()} 
             className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center bg-black/75 backdrop-blur-md rounded-full p-1 border border-white/20 shadow-2xl gap-1"
@@ -477,7 +543,7 @@ export default function BarcodeScannerModal({
                 onClick={() => applyZoom(item.level)}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
                   zoomLevel === item.level
-                    ? 'bg-emerald-500 text-slate-950 shadow-md scale-105'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md scale-105 font-black'
                     : 'text-slate-300 hover:text-white hover:bg-white/10'
                 }`}
               >
@@ -486,16 +552,22 @@ export default function BarcodeScannerModal({
             ))}
           </div>
 
-          {/* Scanned Success Badge */}
+          {/* Scanned Numbers Success Card */}
           {scannedCode && (
-            <div className="absolute inset-0 z-30 bg-emerald-950/85 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-center animate-in fade-in duration-150">
-              <CheckCircle2 className="w-12 h-12 text-emerald-400 mb-2 animate-bounce" />
-              <p className="text-xs font-bold uppercase tracking-wider text-emerald-300">Scanned Successfully</p>
-              <p className="text-lg font-mono font-black text-white mt-1">{scannedCode}</p>
+            <div className="absolute inset-0 z-30 bg-emerald-950/90 backdrop-blur-xs flex flex-col items-center justify-center p-5 text-center animate-in fade-in zoom-in-95 duration-150">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-400 mb-3 shadow-xl animate-bounce">
+                <Check className="w-8 h-8 stroke-[3]" />
+              </div>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-300 mb-1">
+                Numbers Captured
+              </p>
+              <p className="text-2xl font-mono font-black text-white tracking-widest bg-black/50 px-4 py-2 rounded-xl border border-emerald-400/40 shadow-inner">
+                {formatBarcodeNumbers(scannedCode)}
+              </p>
             </div>
           )}
 
-          {/* Error notice */}
+          {/* Error Message */}
           {errorInfo && (
             <div className="absolute inset-4 z-30 bg-slate-900/95 border border-slate-700 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
               <AlertCircle className="w-8 h-8 text-amber-400 mb-2" />
@@ -512,12 +584,12 @@ export default function BarcodeScannerModal({
           )}
         </div>
 
-        {/* Helpful Macro / Close-Up Hint Banner */}
+        {/* Real-time Distance & Macro Guidance */}
         <div className="px-4 py-2.5 bg-slate-800/80 border-t border-slate-800 flex items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2 text-slate-300 min-w-0">
-            <span className="text-amber-400 text-sm">💡</span>
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
             <span className="truncate">
-              <strong>Blurry up close?</strong> Hold item <strong>15cm (6in)</strong> away & use <strong>2x Macro</strong>.
+              Point at barcode lines from <strong>15–20 cm away</strong>.
             </span>
           </div>
           <button
@@ -530,25 +602,29 @@ export default function BarcodeScannerModal({
             }`}
           >
             <ZoomIn className="w-3 h-3" />
-            <span>{zoomLevel === 2 ? '1x Normal' : '2x Close-Up'}</span>
+            <span>{zoomLevel === 2 ? '1x Normal' : '2x Macro'}</span>
           </button>
         </div>
 
-        {/* Manual Barcode Input Fallback */}
+        {/* Capture Numbers Below Barcode (Direct Numeric Input) */}
         <div className="p-4 bg-slate-850 border-t border-slate-800">
           <form onSubmit={handleManualSubmit} className="flex gap-2">
-            <input
-              type="text"
-              value={manualInput}
-              onChange={(e) => setManualInput(e.target.value)}
-              placeholder="Or type barcode manually..."
-              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-            />
+            <div className="relative flex-1">
+              <input
+                type="text"
+                pattern="[0-9]*"
+                inputMode="numeric"
+                value={manualInput}
+                onChange={(e) => setManualInput(e.target.value)}
+                placeholder="Or type the numbers printed below the code..."
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono tracking-wider"
+              />
+            </div>
             <button
               type="submit"
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-colors shadow-xs"
+              className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-emerald-600/20 active:scale-95 flex-shrink-0"
             >
-              Enter
+              Capture
             </button>
           </form>
         </div>
@@ -556,3 +632,4 @@ export default function BarcodeScannerModal({
     </div>
   );
 }
+

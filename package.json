@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ericblade/quagga2": "^1.12.1",
+    "@undecaf/barcode-detector-polyfill": "^0.9.23",
     "firebase": "^10.14.0",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.441.0",
