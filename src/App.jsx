@@ -7,6 +7,7 @@ import { useApp } from './contexts/AppContext';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import ErrorBoundary from './components/shared/ErrorBoundary';
+import PwaInstallPrompt from './components/shared/PwaInstallPrompt';
 
 // Lazy-loaded heavy views
 const Shell = lazy(() => import('./components/layout/Shell'));
@@ -78,6 +79,7 @@ export default function App() {
   if (currentView === 'catalog') {
     return (
       <ErrorBoundary>
+        <PwaInstallPrompt />
         <Suspense fallback={<PageFallback />}>
           <CustomerCatalog
             onOpenStaffLogin={() => {
@@ -94,6 +96,7 @@ export default function App() {
   if (currentView === 'landing' && !currentUser) {
     return (
       <ErrorBoundary>
+        <PwaInstallPrompt />
         <LandingPage
           onOpenLogin={() => {
             window.location.hash = '#login';
@@ -123,6 +126,7 @@ export default function App() {
   if (currentView === 'login' && !currentUser) {
     return (
       <ErrorBoundary>
+        <PwaInstallPrompt />
         <LoginPage
           onBackToLanding={() => {
             window.location.hash = '#landing';
@@ -140,6 +144,7 @@ export default function App() {
   // 4. Authenticated Store Workspace / POS Shell
   return (
     <ErrorBoundary>
+      <PwaInstallPrompt />
       <Suspense fallback={<PageFallback />}>
         <Shell
           onGoToCatalog={() => {

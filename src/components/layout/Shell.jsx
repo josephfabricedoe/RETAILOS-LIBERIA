@@ -236,8 +236,6 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
           </button>
         </header>
 
-        <PwaInstallPrompt />
-
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto pb-20 md:pb-4 bg-slate-100/70 text-slate-900">
           {!isRoleAllowed ? (
