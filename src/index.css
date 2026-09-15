@@ -56,12 +56,23 @@
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
+  transition: transform 0.25s ease-out;
+  transform-origin: center center;
 }
 #retail-modal-barcode-reader #qr-shaded-region {
   display: none !important;
 }
 #retail-modal-barcode-reader canvas {
   display: none !important;
+}
+
+@keyframes focusPulse {
+  0% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.7; border-color: #34d399; }
+  50% { transform: translate(-50%, -50%) scale(0.95); opacity: 1; border-color: #10b981; }
+  100% { transform: translate(-50%, -50%) scale(1.0); opacity: 0.9; border-color: #10b981; }
+}
+.focus-reticle {
+  animation: focusPulse 0.35s ease-out forwards;
 }
 
 /* Receipt print styles (58mm and 80mm ESC/POS compatible) */
