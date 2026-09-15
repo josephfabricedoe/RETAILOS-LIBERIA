@@ -9,18 +9,19 @@ import NotificationBell from '../shared/NotificationBell';
 import PwaInstallPrompt from '../shared/PwaInstallPrompt';
 import TerminalPinModal from '../auth/TerminalPinModal';
 
-// Views
-import POSView from '../pos/POSView';
-import InventoryView from '../inventory/InventoryView';
-import SuppliersView from '../suppliers/SuppliersView';
-import MarketingView from '../marketing/MarketingView';
-import FinanceView from '../finance/FinanceView';
-import AttendanceView from '../attendance/AttendanceView';
-import DeliveryBoard from '../delivery/DeliveryBoard';
-import StaffView from '../staff/StaffView';
-import SettingsView from '../settings/SettingsView';
-import CustomerAccountsView from '../customers/CustomerAccountsView';
-import SuperAdminDashboard from '../superadmin/SuperAdminDashboard';
+// Views (Lazily loaded for instant shell bootup)
+const POSView = React.lazy(() => import('../pos/POSView'));
+const InventoryView = React.lazy(() => import('../inventory/InventoryView'));
+const SuppliersView = React.lazy(() => import('../suppliers/SuppliersView'));
+const MarketingView = React.lazy(() => import('../marketing/MarketingView'));
+const FinanceView = React.lazy(() => import('../finance/FinanceView'));
+const AttendanceView = React.lazy(() => import('../attendance/AttendanceView'));
+const DeliveryBoard = React.lazy(() => import('../delivery/DeliveryBoard'));
+const StaffView = React.lazy(() => import('../staff/StaffView'));
+const SettingsView = React.lazy(() => import('../settings/SettingsView'));
+const CustomerAccountsView = React.lazy(() => import('../customers/CustomerAccountsView'));
+const SuperAdminDashboard = React.lazy(() => import('../superadmin/SuperAdminDashboard'));
+const StorefrontHubView = React.lazy(() => import('../public/StorefrontHubView'));
 
 import { 
   LogOut, 
@@ -45,7 +46,6 @@ import {
 } from 'lucide-react';
 import { canAccessModule, normalizeRole, getDefaultModuleForRole, ROLE_DEFINITIONS, isModuleAvailableForPlan } from '../../utils/rbac';
 import PlanUpgradeLockView from '../shared/PlanUpgradeLockView';
-import StorefrontHubView from '../public/StorefrontHubView';
 
 const MODULE_VIEWS = {
   pos:        POSView,
@@ -259,7 +259,14 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
           ) : !isPlanAllowed ? (
             <PlanUpgradeLockView moduleId={activeModule} />
           ) : (
-            <ActiveView onEnterStore={() => setActiveModule('pos')} />
+            <React.Suspense fallback={
+              <div className="h-64 flex flex-col items-center justify-center text-slate-400 gap-3">
+                <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Loading module...</span>
+              </div>
+            }>
+              <ActiveView onEnterStore={() => setActiveModule('pos')} />
+            </React.Suspense>
           )}
         </main>
       </div>

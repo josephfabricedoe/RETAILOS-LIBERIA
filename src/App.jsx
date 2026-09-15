@@ -1,14 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { useTenant } from './contexts/TenantContext';
 import { useApp } from './contexts/AppContext';
 
-// Views & Pages
+// Direct critical views
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
-import Shell from './components/layout/Shell';
-import CustomerCatalog from './components/public/CustomerCatalog';
 import ErrorBoundary from './components/shared/ErrorBoundary';
+
+// Lazy-loaded heavy views
+const Shell = lazy(() => import('./components/layout/Shell'));
+const CustomerCatalog = lazy(() => import('./components/public/CustomerCatalog'));
+
+const PageFallback = () => (
+  <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-900 font-sans">
+    <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-3 shadow-sm" />
+    <p className="text-xs text-slate-500 font-bold tracking-wider uppercase">
+      Loading...
+    </p>
+  </div>
+);
 
 export default function App() {
   const { currentUser, loading: authLoading } = useAuth();
@@ -51,8 +62,8 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Loading spinner during Firebase initial auth resolution
-  if (authLoading) {
+  // Non-blocking auth resolution: Only display fullscreen initializing spinner if entering workspace/login
+  if (authLoading && (currentView === 'workspace' || currentView === 'login')) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-900 font-sans">
         <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-4 shadow-sm" />
@@ -67,12 +78,14 @@ export default function App() {
   if (currentView === 'catalog') {
     return (
       <ErrorBoundary>
-        <CustomerCatalog
-          onOpenStaffLogin={() => {
-            window.location.hash = '#login';
-            setCurrentView('login');
-          }}
-        />
+        <Suspense fallback={<PageFallback />}>
+          <CustomerCatalog
+            onOpenStaffLogin={() => {
+              window.location.hash = '#login';
+              setCurrentView('login');
+            }}
+          />
+        </Suspense>
       </ErrorBoundary>
     );
   }
@@ -127,16 +140,18 @@ export default function App() {
   // 4. Authenticated Store Workspace / POS Shell
   return (
     <ErrorBoundary>
-      <Shell
-        onGoToCatalog={() => {
-          window.location.hash = '#catalog';
-          setCurrentView('catalog');
-        }}
-        onGoToLanding={() => {
-          window.location.hash = '#landing';
-          setCurrentView('landing');
-        }}
-      />
+      <Suspense fallback={<PageFallback />}>
+        <Shell
+          onGoToCatalog={() => {
+            window.location.hash = '#catalog';
+            setCurrentView('catalog');
+          }}
+          onGoToLanding={() => {
+            window.location.hash = '#landing';
+            setCurrentView('landing');
+          }}
+        />
+      </Suspense>
     </ErrorBoundary>
   );
 }

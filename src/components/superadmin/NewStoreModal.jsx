@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Building2, Store, Mail, Phone, Lock, DollarSign, Palette, Sparkles, Coins, PhoneCall, Key } from 'lucide-react';
 import { useTenant } from '../../contexts/TenantContext';
+import { useAuth } from '../../hooks/useAuth';
 import { WEST_AFRICAN_CURRENCIES } from '../../hooks/useCurrency';
 import { auth, db } from '../../firebase/config';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -27,7 +28,8 @@ const PRESET_THEMES = [
 ];
 
 export default function NewStoreModal({ onClose, onCreated }) {
-  const { createTenant } = useTenant();
+  const { createTenant, switchTenant } = useTenant();
+  const { loginAsLocalUser } = useAuth();
   const [businessName, setBusinessName] = useState('');
   const [slug, setSlug] = useState('');
   const [businessType, setBusinessType] = useState('Boutique & Fashion');
@@ -57,67 +59,97 @@ export default function NewStoreModal({ onClose, onCreated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!businessName.trim() || !slug.trim()) {
-      setError('Business Name and Store Slug are required.');
+    if (!businessName.trim()) {
+      setError('Business Name is required.');
       return;
     }
 
-    setLoading(true);
-    setError('');
+    const genSlug = slug.trim() || businessName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `store-${Date.now().toString().slice(-4)}`;
+    const storeId = `biz_${genSlug}_${Date.now().toString().slice(-4)}`;
 
+    const primaryObj = WEST_AFRICAN_CURRENCIES.find((c) => c.code === primaryCurrency);
+    const secondaryObj = WEST_AFRICAN_CURRENCIES.find((c) => c.code === secondaryCurrency);
+
+    const fullRecord = {
+      businessId: storeId,
+      id: storeId,
+      businessName: businessName.trim(),
+      slug: genSlug,
+      businessType,
+      ownerName: ownerName.trim() || 'Store Owner',
+      ownerEmail: ownerEmail.trim() || `owner_${genSlug}@retailos.lr`,
+      ownerPhone: ownerPhone.trim(),
+      terminalEmail: terminalEmail.trim() || `pos_${genSlug}@retailos.lr`,
+      themeColor,
+      currencyMode,
+      primaryCurrency,
+      primarySymbol: primaryObj?.symbol || '$',
+      secondaryCurrency: currencyMode === 'dual' ? secondaryCurrency : '',
+      secondarySymbol: currencyMode === 'dual' ? (secondaryObj?.symbol || 'L$') : '',
+      exchangeRate: Number(exchangeRate) || 198,
+      fxRate: Number(exchangeRate) || 198,
+      subscriptionPlan,
+      subscriptionStatus: 'active',
+      address: address.trim() || 'Monrovia, Liberia',
+      phone: ownerPhone.trim(),
+      whatsappNumber: ownerPhone.replace(/[^0-9]/g, ''),
+      createdAt: new Date().toISOString().slice(0, 10),
+    };
+
+    // 1. Instantly save store to local registry
     try {
-      const primaryObj = WEST_AFRICAN_CURRENCIES.find((c) => c.code === primaryCurrency);
-      const secondaryObj = WEST_AFRICAN_CURRENCIES.find((c) => c.code === secondaryCurrency);
+      const raw = localStorage.getItem('retailos_local_tenants');
+      const existing = raw ? JSON.parse(raw) : [];
+      const updated = [fullRecord, ...existing.filter(t => (t.businessId || t.id) !== storeId)];
+      localStorage.setItem('retailos_local_tenants', JSON.stringify(updated));
+      localStorage.setItem('retailos_active_tenant_id', storeId);
+    } catch (e) {}
 
-      const newStore = await createTenant({
-        businessName: businessName.trim(),
-        slug: slug.trim(),
-        businessType,
-        ownerName: ownerName.trim(),
-        ownerEmail: ownerEmail.trim(),
-        ownerPhone: ownerPhone.trim(),
-        terminalEmail: terminalEmail.trim() || `pos_${slug}@retailos.lr`,
-        themeColor,
-        currencyMode,
-        primaryCurrency,
-        primarySymbol: primaryObj?.symbol || '$',
-        secondaryCurrency: currencyMode === 'dual' ? secondaryCurrency : '',
-        secondarySymbol: currencyMode === 'dual' ? (secondaryObj?.symbol || 'L$') : '',
-        exchangeRate: Number(exchangeRate) || 198,
-        fxRate: Number(exchangeRate) || 198,
-        subscriptionPlan,
-        subscriptionStatus: 'active',
-        address: address.trim(),
-        phone: ownerPhone.trim(),
-        whatsappNumber: ownerPhone.replace(/[^0-9]/g, ''),
-      });
+    // 2. Instantly log in user as Store Owner
+    const ownerUser = {
+      uid: `user_${Date.now()}`,
+      email: ownerEmail.trim() || `owner_${genSlug}@retailos.lr`,
+      displayName: ownerName.trim() || `${businessName.trim()} Owner`,
+      role: 'owner',
+      tenantId: storeId,
+      businessName: businessName.trim(),
+    };
 
-      // If owner email and password provided, create Firebase Auth user account
-      if (ownerEmail.trim() && password.trim()) {
-        try {
+    if (loginAsLocalUser) {
+      loginAsLocalUser(ownerUser, storeId);
+    }
+
+    if (switchTenant) {
+      switchTenant(storeId);
+    }
+
+    // 3. Immediately transition to workspace (< 50ms)
+    if (onCreated) onCreated(fullRecord);
+    onClose();
+    window.location.hash = '#workspace';
+
+    // 4. Background non-blocking sync to Firebase cloud
+    (async () => {
+      try {
+        if (createTenant) {
+          await createTenant(fullRecord);
+        }
+        if (ownerEmail.trim() && password.trim()) {
           const cred = await createUserWithEmailAndPassword(auth, ownerEmail.trim(), password.trim());
           await setDoc(doc(db, 'users', cred.user.uid), {
             uid: cred.user.uid,
             email: ownerEmail.trim(),
             displayName: ownerName.trim() || 'Store Owner',
             role: 'owner',
-            tenantId: newStore.id,
+            tenantId: storeId,
             businessName: businessName.trim(),
             createdAt: serverTimestamp(),
           });
-        } catch (authErr) {
-          console.warn('Auth user creation note:', authErr);
         }
+      } catch (cloudErr) {
+        console.warn('Background cloud provisioning note (app is already fully functioning locally):', cloudErr);
       }
-
-      if (onCreated) onCreated(newStore);
-      onClose();
-    } catch (err) {
-      console.error(err);
-      setError(err.message || 'Failed to provision new store.');
-    } finally {
-      setLoading(false);
-    }
+    })();
   };
 
   return (
