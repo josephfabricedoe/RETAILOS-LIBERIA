@@ -158,6 +158,12 @@ export default function NewStoreModal({ onClose, onCreated, prefillLead = null }
       subscriptionPlan: 'starter',
       subscriptionStatus: 'active',
       themeColor: '#10b981',
+      ownerPassword: ownerPassword.trim(),
+      cashiers: cashiers.map(c => ({
+        name: c.name.trim(),
+        email: c.email.trim().toLowerCase(),
+        password: c.password.trim(),
+      })),
       createdAt: new Date().toISOString(),
     };
 

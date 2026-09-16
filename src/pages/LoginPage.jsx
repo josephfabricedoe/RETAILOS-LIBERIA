@@ -83,7 +83,7 @@ export default function LoginPage({ onBackToLanding, onSuccess, onGoToLanding, o
     try {
       const localAccounts = JSON.parse(localStorage.getItem('retailos_platform_accounts') || '[]');
       const match = localAccounts.find(
-        (a) => a.email && a.email.toLowerCase() === cleanEmail && a.password === cleanPw
+        (a) => a.email && a.email.toLowerCase().trim() === cleanEmail && (a.password || '').trim() === cleanPw
       );
 
       if (match) {
@@ -97,29 +97,69 @@ export default function LoginPage({ onBackToLanding, onSuccess, onGoToLanding, o
         return;
       }
     } catch (e) {
-      console.warn('Local account cache error:', e);
+      console.warn('Local account cache check notice:', e);
     }
 
-    // 3. Query Firestore 'users' collection with fast timeout
+    // 3. Multi-Layer Cloud Lookup (Firestore users + businesses collections)
+    let emailFoundInSystem = false;
+
     try {
+      // 3A. Query 'users' collection
       const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', cleanEmail));
-      const snap = await withTimeout(getDocs(q), 3500);
+      const userQ = query(usersRef, where('email', '==', cleanEmail));
+      const userSnap = await withTimeout(getDocs(userQ), 8000);
 
-      if (!snap.empty) {
-        const userDoc = snap.docs[0].data();
-        if (userDoc.password && userDoc.password === cleanPw) {
-          loginAsLocalUser(userDoc, userDoc.businessId);
-          if (switchTenant && userDoc.businessId) {
-            switchTenant(userDoc.businessId);
+      if (!userSnap.empty) {
+        emailFoundInSystem = true;
+        for (const docSnap of userSnap.docs) {
+          const userDoc = docSnap.data();
+          if ((userDoc.password || '').trim() === cleanPw) {
+            loginAsLocalUser(userDoc, userDoc.businessId);
+            if (switchTenant && userDoc.businessId) {
+              switchTenant(userDoc.businessId);
+            }
+
+            // Cache locally for instant future offline logins
+            try {
+              const localAccs = JSON.parse(localStorage.getItem('retailos_platform_accounts') || '[]');
+              const updated = [userDoc, ...localAccs.filter((a) => a.email?.toLowerCase().trim() !== cleanEmail)];
+              localStorage.setItem('retailos_platform_accounts', JSON.stringify(updated));
+            } catch (e) {}
+
+            setLoading(false);
+            window.location.hash = '#workspace';
+            if (onSuccess) onSuccess();
+            return;
           }
+        }
+      }
+    } catch (userErr) {
+      console.warn('Firestore users lookup notice:', userErr);
+    }
 
-          // Cache locally for instant future logins
-          try {
-            const localAccs = JSON.parse(localStorage.getItem('retailos_platform_accounts') || '[]');
-            const updated = [userDoc, ...localAccs.filter((a) => a.email !== userDoc.email)];
-            localStorage.setItem('retailos_platform_accounts', JSON.stringify(updated));
-          } catch (e) {}
+    try {
+      // 3B. Query 'businesses' collection by ownerEmail
+      const bizRef = collection(db, 'businesses');
+      const bizQ = query(bizRef, where('ownerEmail', '==', cleanEmail));
+      const bizSnap = await withTimeout(getDocs(bizQ), 8000);
+
+      if (!bizSnap.empty) {
+        emailFoundInSystem = true;
+        const bData = bizSnap.docs[0].data();
+        if ((bData.ownerPassword || '').trim() === cleanPw) {
+          const generatedProfile = {
+            uid: `owner_${bData.businessId || bizSnap.docs[0].id}`,
+            email: cleanEmail,
+            displayName: bData.ownerName || bData.businessName || 'Store Owner',
+            role: 'owner',
+            businessId: bData.businessId || bizSnap.docs[0].id,
+            businessName: bData.businessName || 'My Store',
+          };
+
+          loginAsLocalUser(generatedProfile, generatedProfile.businessId);
+          if (switchTenant && generatedProfile.businessId) {
+            switchTenant(generatedProfile.businessId);
+          }
 
           setLoading(false);
           window.location.hash = '#workspace';
@@ -127,20 +167,27 @@ export default function LoginPage({ onBackToLanding, onSuccess, onGoToLanding, o
           return;
         }
       }
-    } catch (cloudErr) {
-      console.warn('Cloud user lookup notice:', cloudErr);
+    } catch (bizErr) {
+      console.warn('Firestore business owner lookup notice:', bizErr);
     }
 
-    // 4. Try standard Firebase Auth
+    // 4. Try standard Firebase Auth if account was created via Auth SDK
     try {
-      await withTimeout(signIn(cleanEmail, cleanPw), 3500);
+      await withTimeout(signIn(cleanEmail, cleanPw), 6000);
       window.location.hash = '#workspace';
       if (onSuccess) onSuccess();
+      return;
     } catch (authErr) {
-      console.warn('Authentication failure notice:', authErr);
-      setError('Invalid email or password. Please verify your credentials with your store administrator.');
+      console.warn('Firebase Auth check notice:', authErr);
     } finally {
       setLoading(false);
+    }
+
+    // Informative Error Message
+    if (emailFoundInSystem) {
+      setError('Incorrect password. Please verify the password provided for this store account.');
+    } else {
+      setError('Invalid email or password. Please verify your credentials with your store administrator.');
     }
   };
 
