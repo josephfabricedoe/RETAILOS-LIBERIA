@@ -19,6 +19,7 @@ const FinanceView = React.lazy(() => import('../finance/FinanceView'));
 const CustomerAccountsView = React.lazy(() => import('../customers/CustomerAccountsView'));
 const SettingsView = React.lazy(() => import('../settings/SettingsView'));
 const SuperAdminDashboard = React.lazy(() => import('../superadmin/SuperAdminDashboard'));
+const PlanUpgradeLockView = React.lazy(() => import('../shared/PlanUpgradeLockView'));
 
 import { 
   LogOut, 
@@ -33,7 +34,8 @@ import {
   Settings,
   Lock,
   ArrowLeft,
-  Sparkles
+  Sparkles,
+  Smartphone
 } from 'lucide-react';
 import { canAccessModule, normalizeRole, getDefaultModuleForRole, ROLE_DEFINITIONS, isModuleAvailableForPlan } from '../../utils/rbac';
 
