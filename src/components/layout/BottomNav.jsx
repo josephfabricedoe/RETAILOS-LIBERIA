@@ -6,10 +6,9 @@ import { canAccessModule, normalizeRole } from '../../utils/rbac';
 
 const PRIMARY_MOBILE_ITEMS = [
   { id: 'pos',        label: 'POS',        icon: ShoppingCart },
-  { id: 'delivery',   label: 'Delivery',   icon: Truck },
-  { id: 'customers',  label: 'VIP',        icon: HeartHandshake },
   { id: 'inventory',  label: 'Stock',      icon: Package },
-  { id: 'finance',    label: 'Finance',    icon: BarChart3 },
+  { id: 'customers',  label: 'Credit',     icon: HeartHandshake },
+  { id: 'finance',    label: 'Sales',      icon: BarChart3 },
 ];
 
 export default function BottomNav() {

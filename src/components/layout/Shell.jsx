@@ -15,16 +15,10 @@ import DevicePairingModal from '../settings/DevicePairingModal';
 // Views (Lazily loaded for instant shell bootup)
 const POSView = React.lazy(() => import('../pos/POSView'));
 const InventoryView = React.lazy(() => import('../inventory/InventoryView'));
-const SuppliersView = React.lazy(() => import('../suppliers/SuppliersView'));
-const MarketingView = React.lazy(() => import('../marketing/MarketingView'));
 const FinanceView = React.lazy(() => import('../finance/FinanceView'));
-const AttendanceView = React.lazy(() => import('../attendance/AttendanceView'));
-const DeliveryBoard = React.lazy(() => import('../delivery/DeliveryBoard'));
-const StaffView = React.lazy(() => import('../staff/StaffView'));
-const SettingsView = React.lazy(() => import('../settings/SettingsView'));
 const CustomerAccountsView = React.lazy(() => import('../customers/CustomerAccountsView'));
+const SettingsView = React.lazy(() => import('../settings/SettingsView'));
 const SuperAdminDashboard = React.lazy(() => import('../superadmin/SuperAdminDashboard'));
-const StorefrontHubView = React.lazy(() => import('../public/StorefrontHubView'));
 
 import { 
   LogOut, 
@@ -34,49 +28,29 @@ import {
   X, 
   ShoppingCart, 
   Package, 
-  Building2, 
-  MessageCircle, 
   BarChart3, 
   HeartHandshake, 
-  Users, 
-  Truck, 
-  UserCog, 
   Settings,
   Lock,
-  Store,
   ArrowLeft,
-  Sparkles,
-  Smartphone
+  Sparkles
 } from 'lucide-react';
-import { canAccessModule, normalizeRole, getDefaultModuleForRole, ROLE_DEFINITIONS, isModuleAvailableForPlan } from '../../utils/rbac';
-import PlanUpgradeLockView from '../shared/PlanUpgradeLockView';
+import { canAccessModule, normalizeRole, getDefaultModuleForRole, ROLE_DEFINITIONS } from '../../utils/rbac';
 
 const MODULE_VIEWS = {
   pos:        POSView,
   inventory:  InventoryView,
-  suppliers:  SuppliersView,
-  marketing:  MarketingView,
   finance:    FinanceView,
   customers:  CustomerAccountsView,
-  attendance: AttendanceView,
-  delivery:   DeliveryBoard,
-  staff:      StaffView,
-  storefront: StorefrontHubView,
   settings:   SettingsView,
   superadmin: SuperAdminDashboard,
 };
 
 const MODULE_LABELS = {
   pos:        'Point of Sale',
-  inventory:  'Inventory Management',
-  suppliers:  'Suppliers & Restocking',
-  marketing:  'WhatsApp Marketing',
-  finance:    'Finance & Daily Reports',
-  customers:  'Customers & VIP Accounts',
-  attendance: 'Staff Attendance',
-  delivery:   'Delivery Logistics',
-  staff:      'Staff Management',
-  storefront: 'Online Storefront',
+  inventory:  'Inventory Stock',
+  finance:    'Daily Sales & Reports',
+  customers:  'Customers & Store Credit',
   settings:   'Store Settings',
   superadmin: 'Super-Admin Suite',
 };
@@ -84,16 +58,10 @@ const MODULE_LABELS = {
 const ALL_MOBILE_MODULES = [
   { id: 'pos',        label: 'Point of Sale',          icon: ShoppingCart },
   { id: 'inventory',  label: 'Inventory Stock',         icon: Package },
-  { id: 'customers',  label: 'Customers & VIP',         icon: HeartHandshake },
-  { id: 'storefront', label: 'Online Storefront',       icon: Store },
-  { id: 'suppliers',  label: 'Suppliers & Restock',     icon: Building2 },
-  { id: 'finance',    label: 'Finance & Reports',       icon: BarChart3 },
-  { id: 'attendance', label: 'Staff Attendance',        icon: Users },
-  { id: 'staff',      label: 'Staff Management',        icon: UserCog },
-  { id: 'delivery',   label: 'Delivery Board',         icon: Truck },
-  { id: 'marketing',  label: 'WhatsApp Marketing',      icon: MessageCircle },
+  { id: 'customers',  label: 'Customers & Credit',      icon: HeartHandshake },
+  { id: 'finance',    label: 'Sales & Reports',         icon: BarChart3 },
   { id: 'settings',   label: 'Store Settings',          icon: Settings },
-  { id: 'superadmin', label: 'Platform Super-Admin',    icon: Sparkles },
+  { id: 'superadmin', label: 'Super-Admin Suite',       icon: Sparkles },
 ];
 
 export default function Shell({ onGoToCatalog, onGoToLanding, onSignOut }) {

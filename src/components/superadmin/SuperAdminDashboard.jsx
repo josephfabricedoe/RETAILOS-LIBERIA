@@ -23,13 +23,47 @@ import { useTenant, DEFAULT_DEMO_BUSINESS } from '../../contexts/TenantContext';
 import { useApp } from '../../contexts/AppContext';
 import NewStoreModal from './NewStoreModal';
 
+import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebase/config';
+
 export default function SuperAdminDashboard({ onEnterStore }) {
   const { allTenants, currentTenant, switchTenant, updateTenant, updateTenantById, createTenant } = useTenant();
   const { setActiveModule } = useApp();
+  const [activeTab, setActiveTab] = useState('stores'); // 'stores' | 'inquiries'
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showNewStoreModal, setShowNewStoreModal] = useState(false);
+  const [selectedLead, setSelectedLead] = useState(null);
   const [seeding, setSeeding] = useState(false);
+
+  // Incoming Leads from public website
+  const [leads, setLeads] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('retailos_local_leads') || '[]');
+    } catch (e) {
+      return [];
+    }
+  });
+
+  // Subscribe to live leads from Firestore
+  React.useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'leads'), (snap) => {
+        const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        if (fetched.length > 0) {
+          setLeads(fetched);
+          try {
+            localStorage.setItem('retailos_local_leads', JSON.stringify(fetched));
+          } catch (e) {}
+        }
+      });
+      return unsub;
+    } catch (e) {
+      console.warn('Leads snapshot notice:', e);
+    }
+  }, []);
+
+  const pendingLeadsCount = leads.filter((l) => l.status !== 'onboarded').length;
 
   // Platform Aggregate KPIs
   const totalStores = allTenants.length;
@@ -223,7 +257,142 @@ export default function SuperAdminDashboard({ onEnterStore }) {
         </div>
       </div>
 
-      {/* Stores Directory Section */}
+      {/* View Switcher Tabs */}
+      <div className="flex items-center gap-3 border-b border-slate-700 pb-2">
+        <button
+          onClick={() => setActiveTab('stores')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${
+            activeTab === 'stores'
+              ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+              : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+          }`}
+        >
+          <Store className="w-4 h-4" />
+          <span>Active Client Stores ({totalStores})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('inquiries')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all relative ${
+            activeTab === 'inquiries'
+              ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+              : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+          }`}
+        >
+          <MessageCircle className="w-4 h-4" />
+          <span>Web Registrations & Leads ({leads.length})</span>
+          {pendingLeadsCount > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+              {pendingLeadsCount} new
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Tab Content: Inquiries / Leads */}
+      {activeTab === 'inquiries' ? (
+        <div className="bg-slate-800/80 border border-slate-700/70 rounded-2xl p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-700">
+            <div>
+              <h2 className="text-lg font-bold text-white">Merchant Inquiries from Webpage</h2>
+              <p className="text-xs text-slate-400">Stores that submitted "Register Your Business" on the website</p>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedLead(null);
+                setShowNewStoreModal(true);
+              }}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Manual Business Setup</span>
+            </button>
+          </div>
+
+          {leads.length === 0 ? (
+            <div className="py-12 text-center text-slate-500 space-y-2">
+              <MessageCircle className="w-8 h-8 mx-auto text-slate-600" />
+              <p className="text-sm font-semibold">No merchant inquiries received yet.</p>
+              <p className="text-xs text-slate-500">When visitors click "Register Your Business" on the website, their details appear here in real-time.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {leads.map((lead) => {
+                const isOnboarded = lead.status === 'onboarded';
+                const cleanPhone = (lead.phone || '').replace(/[^0-9]/g, '');
+
+                return (
+                  <div 
+                    key={lead.id} 
+                    className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                      isOnboarded 
+                        ? 'bg-slate-850/60 border-slate-700 opacity-75' 
+                        : 'bg-slate-750/90 border-emerald-500/50 shadow-lg shadow-emerald-950/20'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-extrabold text-white text-base block">{lead.businessName}</span>
+                        <span className="text-xs text-emerald-400 font-semibold">{lead.businessType || 'Retail'}</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        isOnboarded ? 'bg-slate-700 text-slate-300' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      }`}>
+                        {isOnboarded ? '✓ Onboarded' : '★ New Lead'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Owner / Contact</span>
+                        <span className="font-semibold text-white">{lead.ownerName || 'Merchant'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Phone / WhatsApp</span>
+                        <span className="font-mono font-bold text-emerald-300">{lead.phone}</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-slate-400 block">Location</span>
+                        <span className="text-slate-300">{lead.location || 'Monrovia'}</span>
+                      </div>
+                      {lead.notes && (
+                        <div className="col-span-2 p-2 bg-slate-800 rounded-xl text-[11px] text-slate-400 italic">
+                          "{lead.notes}"
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 flex items-center gap-2 border-t border-slate-700/60">
+                      {!isOnboarded && (
+                        <button
+                          onClick={() => {
+                            setSelectedLead(lead);
+                            setShowNewStoreModal(true);
+                          }}
+                          className="flex-1 py-2 px-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Onboard & Create Logins</span>
+                        </button>
+                      )}
+                      <a
+                        href={`https://wa.me/231${cleanPhone.slice(-9)}?text=Hello%20${encodeURIComponent(lead.ownerName || lead.businessName)}%2C%20this%20is%20Joseph%20Doe%20from%20RetailOS%20Liberia.%20I%20received%20your%20store%20registration.`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="py-2 px-3 bg-slate-700 hover:bg-slate-650 text-slate-200 font-bold text-xs rounded-xl border border-slate-600 transition flex items-center gap-1.5"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>WhatsApp</span>
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+      /* Stores Directory Section */
       <div className="bg-slate-800/80 border border-slate-700/70 rounded-2xl overflow-hidden shadow-xl">
         <div className="p-4 sm:p-5 border-b border-slate-700/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-800">
           <div>
@@ -408,14 +577,24 @@ export default function SuperAdminDashboard({ onEnterStore }) {
           </table>
         </div>
       </div>
+      )}
 
       {showNewStoreModal && (
         <NewStoreModal
-          onClose={() => setShowNewStoreModal(false)}
+          prefillLead={selectedLead}
+          onClose={() => {
+            setShowNewStoreModal(false);
+            setSelectedLead(null);
+          }}
           onCreated={(store) => {
-            switchTenant(store.businessId);
-            setActiveModule('pos');
-            if (onEnterStore) onEnterStore();
+            if (selectedLead?.id) {
+              setLeads((prev) =>
+                prev.map((l) => (l.id === selectedLead.id ? { ...l, status: 'onboarded' } : l))
+              );
+              try {
+                updateDoc(doc(db, 'leads', selectedLead.id), { status: 'onboarded' }).catch(() => {});
+              } catch (e) {}
+            }
           }}
         />
       )}

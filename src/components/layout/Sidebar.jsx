@@ -24,14 +24,8 @@ import { canAccessModule, normalizeRole, ROLE_DEFINITIONS, isModuleAvailableForP
 const NAV_ITEMS = [
   { id: 'pos',        label: 'Point of Sale',           icon: ShoppingCart },
   { id: 'inventory',  label: 'Inventory Stock',         icon: Package },
-  { id: 'customers',  label: 'Customers & VIP',         icon: HeartHandshake },
-  { id: 'storefront', label: 'Online Storefront',       icon: Store },
-  { id: 'suppliers',  label: 'Suppliers & Restock',     icon: Building2 },
-  { id: 'finance',    label: 'Finance & Reports',       icon: BarChart3 },
-  { id: 'attendance', label: 'Staff Attendance',        icon: Users },
-  { id: 'staff',      label: 'Staff Management',        icon: UserCog },
-  { id: 'delivery',   label: 'Delivery Logistics',      icon: Truck },
-  { id: 'marketing',  label: 'WhatsApp Marketing',      icon: MessageCircle },
+  { id: 'customers',  label: 'Customers & Credit',      icon: HeartHandshake },
+  { id: 'finance',    label: 'Sales & Reports',         icon: BarChart3 },
 ];
 
 const BOTTOM_ITEMS = [

@@ -19,10 +19,10 @@ import {
   Award,
   KeyRound
 } from 'lucide-react';
-import NewStoreModal from '../components/superadmin/NewStoreModal';
+import RegisterInterestModal from '../components/public/RegisterInterestModal';
 
-export default function LandingPage({ onGoToLogin, onStoreRegistered }) {
-  const [showTrialModal, setShowTrialModal] = useState(false);
+export default function LandingPage({ onGoToLogin }) {
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col selection:bg-emerald-500 selection:text-white font-sans">
@@ -44,7 +44,7 @@ export default function LandingPage({ onGoToLogin, onStoreRegistered }) {
           </a>
           <span className="text-emerald-200">·</span>
           <a
-            href="https://wa.me/231770430269?text=Hello%20RetailOS%20Liberia%2C%20I%20would%20like%20assistance%20setting%20up%20my%20store"
+            href="https://wa.me/231770430269?text=Hello%20RetailOS%20Liberia%2C%20I%20would%20like%20to%20register%20my%20business"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 text-emerald-100 hover:text-white hover:underline font-bold"
@@ -52,10 +52,6 @@ export default function LandingPage({ onGoToLogin, onStoreRegistered }) {
             <MessageCircle className="w-3.5 h-3.5 text-white" />
             Chat on WhatsApp
           </a>
-          <span className="hidden sm:inline text-emerald-300">|</span>
-          <span className="text-[11px] text-emerald-100 hidden md:inline">
-            Free forever entry plan available for small micro-retailers!
-          </span>
         </div>
       </div>
 
@@ -71,33 +67,25 @@ export default function LandingPage({ onGoToLogin, onStoreRegistered }) {
                 RetailOS <span className="text-emerald-600">Liberia</span>
               </span>
               <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mt-0.5">
-                Multi-Store Cloud POS
+                Cloud POS & Store OS
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <a
-              href="https://wa.me/231770430269"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100 text-xs font-bold transition"
-            >
-              <Phone className="w-3.5 h-3.5 text-emerald-600" />
-              <span>0770430269</span>
-            </a>
             <button
               onClick={onGoToLogin}
               className="px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-950 rounded-xl hover:bg-slate-100 transition-colors flex items-center gap-1.5"
             >
               <KeyRound className="w-4 h-4 text-emerald-600" />
-              <span>Enter Store (PIN)</span>
+              <span>Sign In to Store</span>
             </button>
+            {/* PART 1: Top Navigation Button */}
             <button
-              onClick={() => setShowTrialModal(true)}
-              className="px-4 py-2 text-xs sm:text-sm font-extrabold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-md shadow-emerald-600/25 transition-all flex items-center gap-1.5"
+              onClick={() => setShowRegisterModal(true)}
+              className="px-4 py-2 text-xs sm:text-sm font-extrabold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-md shadow-emerald-600/25 transition-all flex items-center gap-1.5 active:scale-95"
             >
-              <span>Register Free Store</span>
+              <span>Register Your Business</span>
               <ArrowRight className="w-4 h-4 hidden sm:inline" />
             </button>
           </div>
@@ -109,7 +97,7 @@ export default function LandingPage({ onGoToLogin, onStoreRegistered }) {
         <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center space-y-8">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold shadow-2xs">
             <Sparkles className="w-4 h-4 text-emerald-600" />
-            <span>Built Specifically for Retail Realities in Liberia & West Africa</span>
+            <span>Empowering Liberian Retailers & Boutiques</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-slate-950 leading-tight">
@@ -120,22 +108,24 @@ export default function LandingPage({ onGoToLogin, onStoreRegistered }) {
           </h1>
 
           <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            Run your boutique, pharmacy, cosmetics store, or supermarket with effortless <strong className="text-slate-900 font-bold">single or dual-currency billing</strong> (USD, LRD, GHS, CFA), offline network resilience, 4-digit PIN staff registers, and instant WhatsApp daily executive closing reports.
+            Run your boutique, pharmacy, cosmetics store, or supermarket with effortless <strong className="text-slate-900 font-bold">single or dual-currency billing</strong> (USD & LRD), fast cashier registers, offline resilience, and automated receipt printing.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+            {/* PART 1: Hero Primary CTA */}
             <button
-              onClick={() => setShowTrialModal(true)}
+              onClick={() => setShowRegisterModal(true)}
               className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-base rounded-2xl shadow-xl shadow-emerald-600/25 transition-all flex items-center justify-center gap-2 active:scale-95"
             >
-              <span>Deploy Your Store Workspace Free</span>
+              <Store className="w-5 h-5" />
+              <span>Register Your Business</span>
               <ArrowRight className="w-5 h-5" />
             </button>
             <button
               onClick={onGoToLogin}
               className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-slate-100 border-2 border-slate-300 text-slate-800 font-bold text-base rounded-2xl shadow-2xs transition-colors"
             >
-              Launch POS Terminal
+              Staff & Owner Sign In
             </button>
           </div>
 
@@ -219,6 +209,28 @@ export default function LandingPage({ onGoToLogin, onStoreRegistered }) {
                   Alerts you to restock goods coming from Dubai/China (3–5 weeks) or Ghana/Nigeria (1–2 weeks) well before you stock out on Monrovia shelves.
                 </p>
               </div>
+            </div>
+
+            {/* PART 2: Mid-page Major Call-to-Action Banner */}
+            <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 rounded-3xl p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-emerald-600/20">
+              <div className="space-y-2 text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/40 text-emerald-100 text-[10px] font-black uppercase tracking-wider">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
+                  <span>Custom Store Setup by Joseph Doe & Team</span>
+                </div>
+                <h3 className="text-2xl font-black">Ready to Modernize Your Retail Store?</h3>
+                <p className="text-emerald-100 text-xs sm:text-sm max-w-xl leading-relaxed font-medium">
+                  Register your business today. Our Monrovia team will configure your store profile, owner login, and cashier credentials immediately.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowRegisterModal(true)}
+                className="px-7 py-3.5 rounded-2xl bg-white text-emerald-800 hover:bg-emerald-50 font-black text-sm shadow-lg transition-all shrink-0 flex items-center gap-2 active:scale-95"
+              >
+                <Store className="w-4 h-4 text-emerald-600" />
+                <span>Register Your Business</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </section>
@@ -377,6 +389,36 @@ export default function LandingPage({ onGoToLogin, onStoreRegistered }) {
               </a>
             </div>
           </div>
+          {/* PART 3: Bottom Major Call-to-Action Banner */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 sm:p-12 text-white text-center space-y-6 shadow-2xl relative overflow-hidden">
+            <div className="space-y-3 max-w-2xl mx-auto">
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 px-3 py-1 rounded-full bg-emerald-950 border border-emerald-800">
+                Fast Monrovia Onboarding
+              </span>
+              <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
+                Take Control of Your Store Today
+              </h2>
+              <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">
+                Join retail shopkeepers across Monrovia using RetailOS for dual-currency sales, customer store credits, and staff registers.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+              <button
+                onClick={() => setShowRegisterModal(true)}
+                className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black text-base rounded-2xl shadow-xl shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 active:scale-95"
+              >
+                <Store className="w-5 h-5" />
+                <span>Register Your Business</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+              <button
+                onClick={onGoToLogin}
+                className="w-full sm:w-auto px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold text-base rounded-2xl border border-slate-700 transition"
+              >
+                Already Registered? Sign In
+              </button>
+            </div>
+          </div>
         </section>
       </main>
 
@@ -409,13 +451,8 @@ export default function LandingPage({ onGoToLogin, onStoreRegistered }) {
         </div>
       </footer>
 
-      {showTrialModal && (
-        <NewStoreModal
-          onClose={() => setShowTrialModal(false)}
-          onCreated={(newStore) => {
-            if (onStoreRegistered) onStoreRegistered(newStore);
-          }}
-        />
+      {showRegisterModal && (
+        <RegisterInterestModal onClose={() => setShowRegisterModal(false)} />
       )}
     </div>
   );
