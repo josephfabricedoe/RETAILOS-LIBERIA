@@ -276,10 +276,10 @@ export default function LandingPage({ onGoToLogin }) {
                 </ul>
               </div>
               <button
-                onClick={() => setShowTrialModal(true)}
+                onClick={() => setShowRegisterModal(true)}
                 className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-900 font-bold text-xs transition-colors shadow-2xs"
               >
-                Start Free Forever
+                Register Your Business
               </button>
             </div>
 
@@ -304,20 +304,18 @@ export default function LandingPage({ onGoToLogin }) {
                 </div>
                 <ul className="space-y-2.5 text-xs text-slate-700 pt-4 border-t border-slate-200 font-semibold">
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Everything in Entry Plan</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Multi-Staff 4-Digit PIN Terminal Kiosk</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Automatic Morning Attendance Punch</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Showroom vs. Storeroom Transfers</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Daily Executive WhatsApp Z-Reports</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Cash Drawer Variance Balancing Audits</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Customer VIP Loyalty & Credit Tab Ledger</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Dedicated Cashier & Owner Logins</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Customer Store Credit & Debt Ledger</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Daily Executive Closing Sales Summary</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Fast Dual-Currency Change Calculator</li>
                   <li className="flex items-center gap-2 text-slate-500 font-normal"><span>• Optional: $50 one-time setup & training</span></li>
                 </ul>
               </div>
               <button
-                onClick={() => setShowTrialModal(true)}
+                onClick={() => setShowRegisterModal(true)}
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-md shadow-emerald-600/25 transition-all"
               >
-                Choose Growth ($19.99/mo)
+                Register Your Business
               </button>
             </div>
 
@@ -340,18 +338,16 @@ export default function LandingPage({ onGoToLogin }) {
                 <ul className="space-y-2.5 text-xs text-slate-700 pt-4 border-t border-slate-200 font-semibold">
                   <li className="flex items-center gap-2 font-bold text-emerald-700"><Award className="w-4 h-4 text-emerald-600" /> FREE In-Store Setup & Training (Save $50)</li>
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-purple-600" /> Everything in Growth Plan</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-purple-600" /> Public Customer Storefront Catalog</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-purple-600" /> Bike & Keh-Keh Dispatch Board</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-purple-600" /> Full P&L Statement & COGS Accounting</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-purple-600" /> Unlimited Staff Accounts & Custom Colors</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-purple-600" /> Multiple Cashier Counters</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-purple-600" /> High-volume Inventory Stock Management</li>
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-purple-600" /> Dedicated 24/7 VIP Phone Support</li>
                 </ul>
               </div>
               <button
-                onClick={() => setShowTrialModal(true)}
+                onClick={() => setShowRegisterModal(true)}
                 className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors shadow-md shadow-purple-600/20"
               >
-                Choose Enterprise ($39.99/mo)
+                Register Your Business
               </button>
             </div>
           </div>

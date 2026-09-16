@@ -17,9 +17,12 @@ import {
   Clock, 
   Sparkles,
   RefreshCw,
-  ShoppingBag
+  ShoppingBag,
+  Link as LinkIcon,
+  Copy,
+  Check
 } from 'lucide-react';
-import { useTenant, DEFAULT_DEMO_BUSINESS } from '../../contexts/TenantContext';
+import { useTenant } from '../../contexts/TenantContext';
 import { useApp } from '../../contexts/AppContext';
 import NewStoreModal from './NewStoreModal';
 
@@ -34,7 +37,6 @@ export default function SuperAdminDashboard({ onEnterStore }) {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showNewStoreModal, setShowNewStoreModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
-  const [seeding, setSeeding] = useState(false);
 
   // Incoming Leads from public website
   const [leads, setLeads] = useState(() => {
@@ -108,65 +110,16 @@ export default function SuperAdminDashboard({ onEnterStore }) {
     await updateTenantById(bizId, { subscriptionPlan: newPlan });
   };
 
-  // Quick provision popular Liberia small retail businesses for demo
-  const handleSeedLiberiaDemos = async () => {
-    setSeeding(true);
-    const demos = [
-      {
-        businessName: 'Sinkor Care Pharmacy',
-        slug: 'sinkor-care-pharmacy',
-        businessType: 'Pharmacy & Healthcare',
-        ownerName: 'Dr. Massa Kamara',
-        ownerPhone: '0770555111',
-        ownerEmail: 'massa@sinkorcare.com',
-        terminalEmail: 'pos@sinkorcare.com',
-        themeColor: '#10b981',
-        exchangeRate: 198,
-        subscriptionPlan: 'growth',
-        subscriptionStatus: 'active',
-        address: 'Tubman Blvd, 12th Street Sinkor, Monrovia',
-      },
-      {
-        businessName: 'Paynesville Grocery Mart',
-        slug: 'paynesville-grocery',
-        businessType: 'Supermarket & Grocery',
-        ownerName: 'Kollie Mulbah',
-        ownerPhone: '0886123987',
-        ownerEmail: 'kollie@paynesvillegrocery.lr',
-        terminalEmail: 'pos@paynesvillegrocery.lr',
-        themeColor: '#f59e0b',
-        exchangeRate: 200,
-        subscriptionPlan: 'enterprise',
-        subscriptionStatus: 'active',
-        address: 'ELWA Junction, Paynesville, Liberia',
-      },
-      {
-        businessName: 'Waterside Provisions Hub',
-        slug: 'waterside-provisions',
-        businessType: 'Provision & General Store',
-        ownerName: 'Hawa Sirleaf',
-        ownerPhone: '0777444222',
-        ownerEmail: 'hawa@watersidehub.lr',
-        terminalEmail: 'pos@watersidehub.lr',
-        themeColor: '#8b5cf6',
-        exchangeRate: 198,
-        subscriptionPlan: 'starter',
-        subscriptionStatus: 'active',
-        address: 'Water Street Commercial District, Monrovia',
-      }
-    ];
+  const [copiedLink, setCopiedLink] = useState(false);
 
-    try {
-      for (const d of demos) {
-        if (!allTenants.some(t => t.slug === d.slug)) {
-          await createTenant(d);
-        }
-      }
-    } catch (e) {
-      console.warn('Demo seed error:', e);
-    } finally {
-      setSeeding(false);
-    }
+  const handleCopyDirectLoginLink = (userEmail = '') => {
+    const origin = window.location.origin;
+    const url = userEmail 
+      ? `${origin}/#login?email=${encodeURIComponent(userEmail)}`
+      : `${origin}/#login`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(userEmail || 'direct');
+    setTimeout(() => setCopiedLink(false), 2500);
   };
 
   return (
@@ -192,18 +145,21 @@ export default function SuperAdminDashboard({ onEnterStore }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* DEDICATED SIGN-IN LINK BUTTON */}
           <button
-            onClick={handleSeedLiberiaDemos}
-            disabled={seeding}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-slate-700/60 hover:bg-slate-700 border border-slate-600 text-slate-200 transition-colors disabled:opacity-50"
-            title="Seed sample Monrovia retail businesses"
+            onClick={() => handleCopyDirectLoginLink()}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 text-emerald-300 transition-all shadow-sm"
+            title="Copy dedicated direct login link for merchants"
           >
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>{seeding ? 'Seeding...' : 'Seed Sample Stores'}</span>
+            {copiedLink === 'direct' ? <Check className="w-4 h-4 text-emerald-400" /> : <LinkIcon className="w-4 h-4 text-emerald-400" />}
+            <span>{copiedLink === 'direct' ? 'Direct Link Copied!' : 'Copy Dedicated Sign-In Link'}</span>
           </button>
 
           <button
-            onClick={() => setShowNewStoreModal(true)}
+            onClick={() => {
+              setSelectedLead(null);
+              setShowNewStoreModal(true);
+            }}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/20 transition-all"
           >
             <Plus className="w-4 h-4" />
@@ -547,6 +503,15 @@ export default function SuperAdminDashboard({ onEnterStore }) {
 
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleCopyDirectLoginLink(t.ownerEmail)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition"
+                            title={`Copy direct login link for ${t.ownerEmail || t.businessName}`}
+                          >
+                            {copiedLink === t.ownerEmail ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <LinkIcon className="w-3.5 h-3.5 text-cyan-400" />}
+                            <span>{copiedLink === t.ownerEmail ? 'Copied!' : 'Login Link'}</span>
+                          </button>
+
                           <button
                             onClick={() => handleEnterStore(t)}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl text-xs transition-all shadow-sm"

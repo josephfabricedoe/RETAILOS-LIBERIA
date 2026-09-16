@@ -14,57 +14,6 @@ import { isSuperAdminEmail } from '../utils/rbac';
 
 const TenantContext = createContext(null);
 
-// Default fallback seed for demo / first launch in Liberia
-export const DEFAULT_DEMO_BUSINESS = {
-  businessId: 'biz_monrovia_glam',
-  businessName: 'Monrovia Glam Retail',
-  slug: 'monrovia-glam',
-  businessType: 'Boutique & Fashion',
-  ownerName: 'Fatu Johnson',
-  ownerEmail: 'fatu@monroviaglam.com',
-  ownerPhone: '+231778000001',
-  terminalEmail: 'terminal@monroviaglam.com',
-  logoUrl: '',
-  themeColor: '#0ea5e9', // Clean ocean blue
-  defaultCurrency: 'USD',
-  exchangeRate: 198,
-  address: 'Broad & Randall Street, Monrovia, Liberia',
-  phone: '0778000001',
-  whatsappNumber: '231778000001',
-  subscriptionPlan: 'growth',
-  subscriptionStatus: 'active',
-  trialEndsAt: '2026-10-10',
-  createdAt: new Date().toISOString().slice(0, 10),
-};
-
-export const WD_MEN_FASHION = {
-  businessId: 'biz_wd_men_fashion',
-  businessName: 'WD Men Fashion',
-  slug: 'wd-men-fashion',
-  businessType: 'Boutique & Fashion',
-  ownerName: 'Wilcom Duncan',
-  ownerEmail: 'wilcom@wd.com',
-  ownerPhone: '0770430269',
-  terminalEmail: 'pos_wd_men_fashion@retailos.lr',
-  logoUrl: '',
-  themeColor: '#10b981', // Clean emerald green
-  currencyMode: 'dual',
-  primaryCurrency: 'USD',
-  primarySymbol: '$',
-  secondaryCurrency: 'LRD',
-  secondarySymbol: 'L$',
-  defaultCurrency: 'USD',
-  exchangeRate: 198,
-  fxRate: 198,
-  address: 'Randall Street, Waterside, Monrovia, Liberia',
-  phone: '0770430269',
-  whatsappNumber: '231770430269',
-  subscriptionPlan: 'starter',
-  subscriptionStatus: 'active',
-  trialEndsAt: '2026-12-31',
-  createdAt: new Date().toISOString().slice(0, 10),
-};
-
 const getLocalTenants = () => {
   try {
     const raw = localStorage.getItem('retailos_local_tenants');
@@ -75,10 +24,7 @@ const getLocalTenants = () => {
 };
 
 export function TenantProvider({ children, currentUser }) {
-  const [allTenants, setAllTenants] = useState(() => {
-    const locals = getLocalTenants();
-    return [WD_MEN_FASHION, DEFAULT_DEMO_BUSINESS, ...locals];
-  });
+  const [allTenants, setAllTenants] = useState(() => getLocalTenants());
 
   const [currentTenantId, setCurrentTenantId] = useState(() => {
     // 1. Check URL query (?store=slug or ?biz=slug)
@@ -92,19 +38,21 @@ export function TenantProvider({ children, currentUser }) {
       if (saved) return saved;
     } catch (e) {}
 
-    return WD_MEN_FASHION.businessId;
+    const locals = getLocalTenants();
+    return locals.length > 0 ? (locals[0].businessId || locals[0].id) : null;
   });
 
   const [currentTenant, setCurrentTenant] = useState(() => {
-    const initialList = [WD_MEN_FASHION, DEFAULT_DEMO_BUSINESS, ...getLocalTenants()];
-    return initialList.find(b => b.businessId === currentTenantId || b.slug === currentTenantId) || WD_MEN_FASHION;
+    const initialList = getLocalTenants();
+    if (!currentTenantId && initialList.length > 0) return initialList[0];
+    return initialList.find(b => b.businessId === currentTenantId || b.slug === currentTenantId || b.id === currentTenantId) || initialList[0] || null;
   });
 
   const [loadingTenants, setLoadingTenants] = useState(false);
 
   const isSuperAdmin = currentUser ? isSuperAdminEmail(currentUser.email) : false;
 
-  // Listen to all businesses in real-time
+  // Listen to genuine businesses in real-time
   useEffect(() => {
     let mounted = true;
     const unsub = onSnapshot(
@@ -113,8 +61,8 @@ export function TenantProvider({ children, currentUser }) {
         if (!mounted) return;
         if (!snap.empty) {
           const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          // Merge with predefined seeds and local storage
-          const merged = [WD_MEN_FASHION, ...list, ...getLocalTenants()];
+          const locals = getLocalTenants();
+          const merged = [...list, ...locals];
           const unique = Array.from(new Map(merged.map(item => [item.businessId || item.id, item])).values());
           setAllTenants(unique);
 
@@ -127,21 +75,23 @@ export function TenantProvider({ children, currentUser }) {
             setCurrentTenantId(unique[0].businessId || unique[0].id);
           }
         } else {
-          const fallbackList = [WD_MEN_FASHION, DEFAULT_DEMO_BUSINESS, ...getLocalTenants()];
-          setAllTenants(fallbackList);
-          setCurrentTenant(fallbackList[0]);
+          const locals = getLocalTenants();
+          setAllTenants(locals);
+          if (locals.length > 0) {
+            setCurrentTenant(locals[0]);
+          }
         }
         setLoadingTenants(false);
       },
       (err) => {
         console.warn('Businesses listener notice (offline / quota fallback active):', err);
-        const fallbackList = [WD_MEN_FASHION, DEFAULT_DEMO_BUSINESS, ...getLocalTenants()];
-        setAllTenants(fallbackList);
-        const found = fallbackList.find(b => b.businessId === currentTenantId || b.slug === currentTenantId || b.id === currentTenantId);
+        const locals = getLocalTenants();
+        setAllTenants(locals);
+        const found = locals.find(b => b.businessId === currentTenantId || b.slug === currentTenantId || b.id === currentTenantId);
         if (found) {
           setCurrentTenant(found);
-        } else {
-          setCurrentTenant(fallbackList[0]);
+        } else if (locals.length > 0) {
+          setCurrentTenant(locals[0]);
         }
         setLoadingTenants(false);
       }
@@ -196,13 +146,13 @@ export function TenantProvider({ children, currentUser }) {
 
   // Helper to get scoped collection reference: /businesses/{businessId}/{collectionName}
   const getTenantCol = (collectionName) => {
-    const bizId = currentTenant?.businessId || currentTenantId || DEFAULT_DEMO_BUSINESS.businessId;
+    const bizId = currentTenant?.businessId || currentTenantId || 'default';
     return collection(db, 'businesses', bizId, collectionName);
   };
 
   // Helper to get scoped doc reference: /businesses/{businessId}/{collectionName}/{docId}
   const getTenantDoc = (collectionName, docId) => {
-    const bizId = currentTenant?.businessId || currentTenantId || DEFAULT_DEMO_BUSINESS.businessId;
+    const bizId = currentTenant?.businessId || currentTenantId || 'default';
     return doc(db, 'businesses', bizId, collectionName, docId);
   };
 

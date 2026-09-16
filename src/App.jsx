@@ -29,31 +29,56 @@ export default function App() {
 
   // Navigation State: 'landing' | 'login' | 'workspace' | 'catalog'
   const [currentView, setCurrentView] = useState(() => {
-    // 1. Check URL hash or query params
+    // 1. Check direct URL pathname, hash or query params
+    const pathname = window.location.pathname.toLowerCase();
     const hash = window.location.hash.toLowerCase();
     const params = new URLSearchParams(window.location.search);
     const viewParam = params.get('view');
 
+    if (
+      pathname === '/login' || 
+      pathname.startsWith('/login') || 
+      hash === '#login' || 
+      viewParam === 'login' || 
+      params.has('login')
+    ) {
+      return 'login';
+    }
     if (hash === '#catalog' || viewParam === 'catalog') return 'catalog';
-    if (hash === '#login' || viewParam === 'login') return 'login';
     if (hash === '#landing' || viewParam === 'landing') return 'landing';
 
-    // 2. If user already has a saved session token in localStorage/session
     return 'landing';
   });
 
-  // Keep view synchronized with hash changes
+  // Keep view synchronized with hash and URL navigation changes
   useEffect(() => {
-    const handleHashChange = () => {
+    const handleNavigation = () => {
+      const pathname = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
-      if (hash === '#catalog') setCurrentView('catalog');
-      else if (hash === '#login') setCurrentView('login');
-      else if (hash === '#landing') setCurrentView('landing');
-      else if (hash === '#workspace' || hash === '#pos') setCurrentView('workspace');
+      const params = new URLSearchParams(window.location.search);
+
+      if (
+        pathname === '/login' || 
+        pathname.startsWith('/login') || 
+        hash === '#login' || 
+        params.has('login')
+      ) {
+        setCurrentView('login');
+      } else if (hash === '#catalog') {
+        setCurrentView('catalog');
+      } else if (hash === '#landing') {
+        setCurrentView('landing');
+      } else if (hash === '#workspace' || hash === '#pos') {
+        setCurrentView('workspace');
+      }
     };
 
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener('hashchange', handleNavigation);
+    window.addEventListener('popstate', handleNavigation);
+    return () => {
+      window.removeEventListener('hashchange', handleNavigation);
+      window.removeEventListener('popstate', handleNavigation);
+    };
   }, []);
 
   // Synchronize view with authentication state

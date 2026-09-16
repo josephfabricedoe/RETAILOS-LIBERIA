@@ -226,12 +226,21 @@ export default function NewStoreModal({ onClose, onCreated, prefillLead = null }
     if (onCreated) onCreated(fullRecord);
   };
 
+  const [copiedLinkOnly, setCopiedLinkOnly] = useState(false);
+
+  const getDirectLink = () => {
+    if (!createdSummary) return 'https://liberiaretailos.online/#login';
+    return `https://liberiaretailos.online/#login?email=${encodeURIComponent(createdSummary.owner.email)}`;
+  };
+
   const getWhatsAppMessage = () => {
     if (!createdSummary) return '';
     const { store, owner, cashiers } = createdSummary;
+    const directLink = `https://liberiaretailos.online/#login?email=${encodeURIComponent(owner.email)}`;
+
     let msg = `*Welcome to RetailOS Liberia! 🇱🇷*\n\n`;
     msg += `Your store workspace for *${store.businessName}* has been set up and is live!\n\n`;
-    msg += `*Login Portal:* https://retailos-liberia-212ba.web.app\n\n`;
+    msg += `*🔗 Dedicated Sign-In Link (Click to open):*\n${directLink}\n\n`;
     msg += `*👑 STORE OWNER LOGIN (Full Access):*\n`;
     msg += `• Email: ${owner.email}\n`;
     msg += `• Password: ${owner.password}\n\n`;
@@ -338,6 +347,32 @@ export default function NewStoreModal({ onClose, onCreated, prefillLead = null }
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Dedicated Application Sign-In Link */}
+            <div className="bg-emerald-50/80 border border-emerald-300 rounded-2xl p-4 space-y-2">
+              <span className="font-bold text-emerald-950 block text-[11px] uppercase tracking-wider">
+                🔗 Dedicated Sign-In Link for this Store:
+              </span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={getDirectLink()}
+                  className="flex-1 px-3 py-2 bg-white border border-emerald-300 rounded-xl text-xs font-mono text-emerald-900 select-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(getDirectLink());
+                    setCopiedLinkOnly(true);
+                    setTimeout(() => setCopiedLinkOnly(false), 2000);
+                  }}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition shrink-0"
+                >
+                  {copiedLinkOnly ? 'Copied!' : 'Copy Link'}
+                </button>
               </div>
             </div>
 
