@@ -12,10 +12,13 @@ import {
   Store,
   ExternalLink,
   Lock,
-  Sparkles
+  Sparkles,
+  Smartphone,
+  QrCode
 } from 'lucide-react';
 import StoreInfoForm from './StoreInfoForm';
 import FactoryResetModal from './FactoryResetModal';
+import DevicePairingModal from './DevicePairingModal';
 import { useTenant } from '../../contexts/TenantContext';
 import { useTenantCollection } from '../../hooks/useTenantFirestore';
 import { exportToCsv } from '../../utils/exportCsv';
@@ -28,6 +31,7 @@ export default function SettingsView() {
   const { docs: customers } = useTenantCollection('customers');
 
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showPairingModal, setShowPairingModal] = useState(false);
   const [printerStatus, setPrinterStatus] = useState('Disconnected');
   const [isTestingPrinter, setIsTestingPrinter] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -216,6 +220,47 @@ export default function SettingsView() {
         </div>
       </div>
 
+      {/* Multi-Device Counter & Tablet Access */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-200">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Connect Additional Devices</h2>
+              <p className="text-xs text-slate-500">
+                Link sales counter tablets, staff phones, or laptop registers to this store
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowPairingModal(true)}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm shrink-0"
+          >
+            <QrCode className="w-4 h-4" />
+            <span>Show QR Pairing Code</span>
+          </button>
+        </div>
+
+        <div className="py-4 text-xs text-slate-600 space-y-2">
+          <p>
+            You can run RetailOS simultaneously on multiple phones, tablets, or computers across your store.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+              <span className="font-bold text-slate-900 block mb-1">Instant QR Pairing</span>
+              <p className="text-slate-500 text-[11px]">Scan the pairing QR code with your second device camera to link in 5 seconds.</p>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+              <span className="font-bold text-slate-900 block mb-1">Phone + 4-Digit PIN Link</span>
+              <p className="text-slate-500 text-[11px]">On any new device, enter your store phone and 4-digit PIN to unlock 100% offline.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Subscription & Multi-Tenant Plan */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -302,6 +347,10 @@ export default function SettingsView() {
 
       {showResetModal && (
         <FactoryResetModal onClose={() => setShowResetModal(false)} />
+      )}
+
+      {showPairingModal && (
+        <DevicePairingModal onClose={() => setShowPairingModal(false)} />
       )}
     </div>
   );

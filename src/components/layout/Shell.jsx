@@ -10,6 +10,7 @@ import PwaInstallPrompt from '../shared/PwaInstallPrompt';
 import TerminalPinModal from '../auth/TerminalPinModal';
 import LaunchpadChecklist from '../shared/LaunchpadChecklist';
 import ConnectivityBadge from '../shared/ConnectivityBadge';
+import DevicePairingModal from '../settings/DevicePairingModal';
 
 // Views (Lazily loaded for instant shell bootup)
 const POSView = React.lazy(() => import('../pos/POSView'));
@@ -44,7 +45,8 @@ import {
   Lock,
   Store,
   ArrowLeft,
-  Sparkles
+  Sparkles,
+  Smartphone
 } from 'lucide-react';
 import { canAccessModule, normalizeRole, getDefaultModuleForRole, ROLE_DEFINITIONS, isModuleAvailableForPlan } from '../../utils/rbac';
 import PlanUpgradeLockView from '../shared/PlanUpgradeLockView';
@@ -108,6 +110,7 @@ export default function Shell({ onGoToCatalog, onGoToLanding, onSignOut }) {
   } = useAuth();
   const { currentTenant, switchTenant } = useTenant();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [showPairingModal, setShowPairingModal] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -221,6 +224,19 @@ export default function Shell({ onGoToCatalog, onGoToLanding, onSignOut }) {
             >
               <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
               <span className="hidden sm:inline">Storefront</span>
+            </button>
+          )}
+
+          {/* Multi-Device QR Pairing for Store Owners */}
+          {(userRole === 'owner' || isSuper) && (
+            <button
+              type="button"
+              onClick={() => setShowPairingModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-xl text-xs font-bold transition shadow-xs"
+              title="Connect another phone, tablet, or PC to this store"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden lg:inline">Link Device</span>
             </button>
           )}
 
@@ -367,6 +383,11 @@ export default function Shell({ onGoToCatalog, onGoToLanding, onSignOut }) {
 
       {/* 4-Digit PIN Terminal Kiosk Lock Screen */}
       {isTerminalLocked && <TerminalPinModal />}
+
+      {/* Multi-Device QR Pairing Modal */}
+      {showPairingModal && (
+        <DevicePairingModal onClose={() => setShowPairingModal(false)} />
+      )}
     </div>
   );
 }
