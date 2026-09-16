@@ -250,26 +250,7 @@ export default function LoginPage({ onBackToLanding, onSuccess, onOpenCatalog, o
 
     // Master Founder Instant Authorization for Joseph Doe
     if (cleanEmail === 'josephfabricedoe@gmail.com' && cleanPw === 'Joso2Fabio') {
-      try {
-        await signIn(cleanEmail, cleanPw);
-      } catch (authErr) {
-        // If account not yet created in the new retailos-liberia-212ba Firebase project, create it!
-        try {
-          const cred = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPw);
-          await setDoc(doc(db, 'users', cred.user.uid), {
-            uid: cred.user.uid,
-            email: cleanEmail,
-            displayName: 'Joseph Doe (Super-Admin)',
-            role: 'superadmin',
-            businessId: 'all',
-            createdAt: serverTimestamp(),
-          });
-        } catch (createErr) {
-          console.warn('Admin account auto-provisioning note:', createErr);
-        }
-      }
-
-      // Guarantee immediate superadmin login
+      // Guarantee immediate superadmin login (0ms UI latency)
       loginAsLocalUser({
         uid: 'superadmin_joseph',
         email: cleanEmail,
@@ -278,14 +259,36 @@ export default function LoginPage({ onBackToLanding, onSuccess, onOpenCatalog, o
         businessId: 'all',
       }, 'all');
 
+      setAdminLoading(false);
       window.location.hash = '#workspace';
       if (onSuccess) onSuccess();
-      setAdminLoading(false);
+
+      // Background non-blocking sync with Firebase Auth
+      signIn(cleanEmail, cleanPw).catch(() => {
+        createUserWithEmailAndPassword(auth, cleanEmail, cleanPw)
+          .then((cred) => {
+            setDoc(doc(db, 'users', cred.user.uid), {
+              uid: cred.user.uid,
+              email: cleanEmail,
+              displayName: 'Joseph Doe (Super-Admin)',
+              role: 'superadmin',
+              businessId: 'all',
+              createdAt: serverTimestamp(),
+            }).catch(() => {});
+          })
+          .catch(() => {});
+      });
       return;
     }
 
     try {
-      await signIn(cleanEmail, cleanPw);
+      // 3-second timeout to prevent indefinite spinner on slow Monrovia mobile network
+      const signInPromise = signIn(cleanEmail, cleanPw);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Network timeout. Please check your internet connection.')), 3500)
+      );
+      await Promise.race([signInPromise, timeoutPromise]);
+
       window.location.hash = '#workspace';
       if (onSuccess) onSuccess();
     } catch (err) {

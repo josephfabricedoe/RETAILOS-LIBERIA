@@ -50,8 +50,22 @@ export default function POSView() {
   const { getTenantCol, getTenantDoc, tenantId, currentTenant } = useTenant();
   const { isOnline } = useNetworkStatus();
 
-  const [allProducts, setAllProducts] = useState([]);
-  const [customersList, setCustomersList] = useState([]);
+  const [allProducts, setAllProducts] = useState(() => {
+    try {
+      const cached = localStorage.getItem(`retailos_cache_products_${tenantId || 'default'}`);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [customersList, setCustomersList] = useState(() => {
+    try {
+      const cached = localStorage.getItem(`retailos_cache_customers_${tenantId || 'default'}`);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -89,13 +103,24 @@ export default function POSView() {
     }
   };
 
-  // Subscribe to live products from tenant subcollection
+  // Subscribe to live products from tenant subcollection with immediate cache display
   useEffect(() => {
     if (!tenantId) return;
+    try {
+      const cached = localStorage.getItem(`retailos_cache_products_${tenantId}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) setAllProducts(parsed);
+      }
+    } catch (e) {}
+
     try {
       const unsub = onSnapshot(getTenantCol('products'), (snap) => {
         const prods = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         setAllProducts(prods);
+        try {
+          localStorage.setItem(`retailos_cache_products_${tenantId}`, JSON.stringify(prods));
+        } catch (e) {}
       });
       return unsub;
     } catch (e) {
@@ -103,13 +128,24 @@ export default function POSView() {
     }
   }, [tenantId]);
 
-  // Subscribe to live customers from tenant subcollection
+  // Subscribe to live customers from tenant subcollection with immediate cache display
   useEffect(() => {
     if (!tenantId) return;
+    try {
+      const cached = localStorage.getItem(`retailos_cache_customers_${tenantId}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) setCustomersList(parsed);
+      }
+    } catch (e) {}
+
     try {
       const unsub = onSnapshot(getTenantCol('customers'), (snap) => {
         const custs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         setCustomersList(custs);
+        try {
+          localStorage.setItem(`retailos_cache_customers_${tenantId}`, JSON.stringify(custs));
+        } catch (e) {}
       });
       return unsub;
     } catch (e) {

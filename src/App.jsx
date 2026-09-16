@@ -68,13 +68,13 @@ export default function App() {
     }
   }, [currentUser, currentView]);
 
-  // Non-blocking auth resolution: Only display fullscreen initializing spinner if entering workspace/login
-  if (authLoading && (currentView === 'workspace' || currentView === 'login')) {
+  // Non-blocking auth resolution: Never stall the user on login or catalog screens
+  if (authLoading && currentView === 'workspace' && !currentUser) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-900 font-sans">
-        <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-4 shadow-sm" />
+        <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-3 shadow-sm" />
         <p className="text-xs text-slate-600 font-bold tracking-wider uppercase">
-          Initializing RetailOS Liberia...
+          Loading RetailOS Liberia...
         </p>
       </div>
     );

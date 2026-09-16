@@ -23,17 +23,21 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const { currentTenant, switchTenant } = useTenant();
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [localUser, setLocalUser] = useState(() => {
+
+  // Instant local user restoration for 0ms initial load
+  const initialLocalUser = (() => {
     try {
       const saved = localStorage.getItem('retailos_local_user');
       return saved ? JSON.parse(saved) : null;
     } catch (e) {
       return null;
     }
-  });
+  })();
+
+  const [currentUser, setCurrentUser] = useState(initialLocalUser);
+  const [userProfile, setUserProfile] = useState(initialLocalUser);
+  const [loading, setLoading] = useState(false);
+  const [localUser, setLocalUser] = useState(initialLocalUser);
   const [roleOverride, setRoleOverride] = useState(() => {
     try {
       return localStorage.getItem('retailos_role_override') || null;
@@ -71,18 +75,16 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    // Safety fallback timer for offline / slow mobile network in Monrovia
+    // Fast non-blocking fallback
     const fallbackTimer = setTimeout(() => {
       if (mounted) setLoading(false);
-    }, 2000);
+    }, 150);
 
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!mounted) return;
-      setCurrentUser(user);
-      setLoading(false);
       clearTimeout(fallbackTimer);
-
       if (user) {
+        setCurrentUser(user);
         const isSuper = isSuperAdminEmail(user.email);
 
         try {
@@ -129,8 +131,12 @@ export function AuthProvider({ children }) {
           }
         }
       } else {
-        setUserProfile(null);
+        // If not logged in via Firebase Auth, keep localUser if exists
+        if (!initialLocalUser) {
+          setUserProfile(null);
+        }
       }
+      setLoading(false);
     });
 
     return () => {
