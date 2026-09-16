@@ -225,13 +225,11 @@ export default function SuperAdminDashboard({ onEnterStore }) {
     }
   };
 
-  const handleCopyDirectLoginLink = (userEmail = '') => {
+  const handleCopyDirectLoginLink = () => {
     const origin = window.location.origin;
-    const url = userEmail 
-      ? `${origin}/app?email=${encodeURIComponent(userEmail)}`
-      : `${origin}/app`;
+    const url = `${origin}/app`;
     navigator.clipboard.writeText(url);
-    setCopiedLink(userEmail || 'direct');
+    setCopiedLink('direct');
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
