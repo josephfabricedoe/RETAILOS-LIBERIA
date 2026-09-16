@@ -21,7 +21,7 @@ import {
 import { useTenant } from '../../contexts/TenantContext';
 import { useApp } from '../../contexts/AppContext';
 import { WEST_AFRICAN_CURRENCIES } from '../../hooks/useCurrency';
-import { doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 
 const COLOR_PRESETS = [
@@ -142,7 +142,7 @@ export default function StoreInfoForm() {
         updatedAt: Timestamp.now()
       };
 
-      await updateDoc(storeDocRef, updates);
+      await setDoc(storeDocRef, updates, { merge: true });
       if (updateCurrencySettings) {
         await updateCurrencySettings(updates);
       }
