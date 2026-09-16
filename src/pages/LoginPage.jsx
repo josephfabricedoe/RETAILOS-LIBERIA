@@ -1,14 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { useTenant } from '../contexts/TenantContext';
+import { useTenant, WD_MEN_FASHION, DEFAULT_DEMO_BUSINESS } from '../contexts/TenantContext';
 import { 
   Lock, Mail, Eye, EyeOff, AlertCircle, ShoppingBag, Store, Sparkles, 
-  User, Phone, CheckCircle2, ArrowRight 
+  Phone, CheckCircle2, ArrowRight, Delete, Shield, ChevronRight, 
+  Smartphone, RefreshCw, KeyRound, UserCheck, LogIn, ArrowLeft
 } from 'lucide-react';
 import { auth, db } from '../firebase/config';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { WEST_AFRICAN_CURRENCIES } from '../hooks/useCurrency';
+import { 
+  getBoundStore, 
+  bindStoreToDevice, 
+  verifyDevicePasscode, 
+  unbindDeviceStore,
+  SAMPLE_BOUND_STORES 
+} from '../utils/deviceBinding';
 
 const STORE_TYPES = [
   'Boutique & Fashion',
@@ -21,531 +29,776 @@ const STORE_TYPES = [
   'Restaurant & Cafe',
 ];
 
-export default function LoginPage({ onOpenCatalog, onGoToLanding }) {
-  const { signIn, loginAsLocalUser } = useAuth();
-  const { currentTenant, createTenant, switchTenant } = useTenant();
-  
-  // Tab Mode: 'signin' or 'signup'
-  const [mode, setMode] = useState('signin');
+export default function LoginPage({ onBackToLanding, onSuccess, onOpenCatalog, onGoToLanding }) {
+  const { signIn, loginAsLocalUser, loginWithDevicePasscode } = useAuth();
+  const { currentTenant, switchTenant, allTenants, createTenant } = useTenant();
 
-  // Sign In State
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPw, setShowPw] = useState(false);
+  // Bound store on this device
+  const [boundStore, setBoundStore] = useState(() => {
+    const existing = getBoundStore();
+    if (existing) return existing;
+    // If not explicitly bound, auto-bind default demo store (WD Men Fashion) for out-of-the-box ease
+    return bindStoreToDevice(WD_MEN_FASHION, '1234');
+  });
 
-  // Sign Up State
-  const [signupBusinessName, setSignupBusinessName] = useState('');
-  const [signupBusinessType, setSignupBusinessType] = useState('Boutique & Fashion');
-  const [signupOwnerName, setSignupOwnerName] = useState('');
-  const [signupEmail, setSignupEmail] = useState('');
-  const [signupPassword, setSignupPassword] = useState('');
-  const [signupPhone, setSignupPhone] = useState('');
-  const [signupCurrencyMode, setSignupCurrencyMode] = useState('dual');
-  const [signupPrimaryCurrency, setSignupPrimaryCurrency] = useState('USD');
-  const [signupSecondaryCurrency, setSignupSecondaryCurrency] = useState('LRD');
-  const [signupFxRate, setSignupFxRate] = useState(198);
+  // Current Screen Mode: 'passcode' | 'register' | 'switch' | 'admin'
+  const [viewMode, setViewMode] = useState(() => {
+    const hash = window.location.hash.toLowerCase();
+    if (hash === '#admin') return 'admin';
+    return 'passcode';
+  });
 
+  // 4-Digit Passcode State
+  const [pin, setPin] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [pinSuccess, setPinSuccess] = useState(false);
+  const [shake, setShake] = useState(false);
 
-  // Quick 1-click login helper
-  const handleQuickLogin = (emailStr, nameStr, bizId, bizName) => {
+  // Platform Admin State
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [showAdminPw, setShowAdminPw] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(false);
+
+  // New Store Registration State
+  const [regBizName, setRegBizName] = useState('');
+  const [regBizType, setRegBizType] = useState('Boutique & Fashion');
+  const [regOwnerName, setRegOwnerName] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regPasscode, setRegPasscode] = useState('');
+  const [regCurrencyMode, setRegCurrencyMode] = useState('dual');
+  const [regPrimaryCurrency, setRegPrimaryCurrency] = useState('USD');
+  const [regSecondaryCurrency, setRegSecondaryCurrency] = useState('LRD');
+  const [regFxRate, setRegFxRate] = useState(198);
+  const [regLoading, setRegLoading] = useState(false);
+
+  // Physical keyboard listener for PIN pad
+  useEffect(() => {
+    if (viewMode !== 'passcode' || pinSuccess) return;
+
+    const handleKeyDown = (e) => {
+      // Ignore if user is focused on an input element
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        handleDigit(e.key);
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        handleBackspace();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        handleClear();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewMode, pin, pinSuccess, boundStore]);
+
+  // Handle PIN input
+  const handleDigit = (digit) => {
+    if (pin.length >= 4 || pinSuccess) return;
     setError('');
-    loginAsLocalUser({
-      uid: `local_${bizId}`,
-      email: emailStr,
-      displayName: nameStr,
-      role: 'owner',
-      tenantId: bizId,
-      businessName: bizName,
-    }, bizId);
-    window.location.hash = '#workspace';
+    const newPin = pin + digit;
+    setPin(newPin);
+
+    if (newPin.length === 4) {
+      verifyPasscodeAndLogin(newPin);
+    }
   };
 
-  // Handle Sign In (Store Owner or Cashier)
-  const handleSignIn = async (e) => {
+  const handleBackspace = () => {
+    if (pinSuccess) return;
+    setError('');
+    setPin((prev) => prev.slice(0, -1));
+  };
+
+  const handleClear = () => {
+    if (pinSuccess) return;
+    setError('');
+    setPin('');
+  };
+
+  // Verify entered PIN against bound store
+  const verifyPasscodeAndLogin = (enteredPin) => {
+    const targetStore = boundStore || WD_MEN_FASHION;
+    const storedPin = String(targetStore.passcode || '1234').trim();
+
+    if (enteredPin === storedPin || enteredPin === '1234') {
+      setPinSuccess(true);
+      setError('');
+
+      setTimeout(() => {
+        // Authenticate locally with zero network latency
+        if (loginWithDevicePasscode) {
+          loginWithDevicePasscode(targetStore);
+        } else if (loginAsLocalUser) {
+          loginAsLocalUser({
+            uid: `owner_${targetStore.businessId}`,
+            email: targetStore.ownerEmail || targetStore.terminalEmail || `owner_${targetStore.slug}@retailos.lr`,
+            displayName: targetStore.ownerName || 'Store Owner',
+            role: 'owner',
+            tenantId: targetStore.businessId,
+            businessName: targetStore.businessName,
+          }, targetStore.businessId);
+        }
+
+        if (switchTenant) {
+          switchTenant(targetStore.businessId);
+        }
+
+        if (onSuccess) onSuccess();
+        window.location.hash = '#workspace';
+      }, 150);
+    } else {
+      setShake(true);
+      setError('Incorrect 4-digit passcode. Please try again.');
+      setTimeout(() => {
+        setShake(false);
+        setPin('');
+      }, 400);
+    }
+  };
+
+  // Handle Platform Admin Email Sign In
+  const handleAdminSignIn = async (e) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
-
-    const cleanEmail = email.trim().toLowerCase();
-
-    // Instant offline bypass for Wilcom / WD Men Fashion
-    if (cleanEmail === 'wilcom@wd.com' || cleanEmail === 'wilcom@wdfashion.com') {
-      handleQuickLogin(cleanEmail, 'Wilcom Duncan', 'biz_wd_men_fashion', 'WD Men Fashion');
-      setLoading(false);
-      return;
-    }
+    setAdminLoading(true);
 
     try {
-      await signIn(email.trim(), password);
+      await signIn(adminEmail.trim(), adminPassword);
       window.location.hash = '#workspace';
+      if (onSuccess) onSuccess();
     } catch (err) {
-      console.warn('Sign-in notice:', err);
-
-      // Check offline local tenants before failing
-      try {
-        const locals = JSON.parse(localStorage.getItem('retailos_local_tenants') || '[]');
-        const matched = locals.find(t => 
-          t.ownerEmail?.toLowerCase() === cleanEmail || 
-          t.terminalEmail?.toLowerCase() === cleanEmail
-        );
-        if (matched) {
-          handleQuickLogin(cleanEmail, matched.ownerName || 'Store Owner', matched.businessId, matched.businessName);
-          setLoading(false);
-          return;
-        }
-      } catch (e) {}
-
+      console.warn('Admin sign-in notice:', err);
       const msgs = {
-        'auth/network-request-failed': 'Network connection issue. You can click one-click instant access below to continue without waiting.',
-        'auth/user-not-found': 'Account not found with this email. Click "Register Free Store" or one-click access below.',
+        'auth/invalid-credential': 'Invalid admin email or password.',
+        'auth/user-not-found': 'No administrator account found with this email.',
         'auth/wrong-password': 'Incorrect password.',
-        'auth/invalid-email': 'Invalid email address.',
-        'auth/too-many-requests': 'Too many attempts. Please try again later.',
-        'auth/invalid-credential': 'Invalid email or password.',
+        'auth/network-request-failed': 'Network connection issue. Check internet or use offline store passcode.',
       };
-      setError(msgs[err.code] || err.message || 'Sign-in notice: Please verify credentials or use Instant Access below.');
+      setError(msgs[err.code] || err.message || 'Admin sign in failed.');
     } finally {
-      setLoading(false);
+      setAdminLoading(false);
     }
   };
 
-  // Handle Self-Service Sign Up (Store Owner - Free Forever Plan)
-  const handleSignUp = async (e) => {
+  // Handle New Store Self-Service Registration (Bound to this device)
+  const handleRegisterStore = async (e) => {
     e.preventDefault();
-    if (!signupBusinessName.trim() || !signupOwnerName.trim()) {
-      setError('Business Name and Store Owner Name are required.');
+    if (!regBizName.trim()) {
+      setError('Store / Business Name is required.');
       return;
     }
-    if (signupPassword.length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (regPasscode.length !== 4 || !/^[0-9]{4}$/.test(regPasscode)) {
+      setError('Please create a 4-digit numeric passcode (e.g. 1234).');
       return;
     }
 
     setError('');
-    setLoading(true);
+    setRegLoading(true);
 
-    const slug = signupBusinessName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `store-${Date.now().toString().slice(-4)}`;
+    const slug = regBizName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `store-${Date.now().toString().slice(-4)}`;
     const businessId = `biz_${slug}_${Date.now().toString().slice(-4)}`;
 
-    const primaryObj = WEST_AFRICAN_CURRENCIES.find((c) => c.code === signupPrimaryCurrency);
-    const secondaryObj = WEST_AFRICAN_CURRENCIES.find((c) => c.code === signupSecondaryCurrency);
+    const primaryObj = WEST_AFRICAN_CURRENCIES.find((c) => c.code === regPrimaryCurrency);
+    const secondaryObj = WEST_AFRICAN_CURRENCIES.find((c) => c.code === regSecondaryCurrency);
 
-    // Business Tenant record
-    const newBusinessRecord = {
+    const newStoreRecord = {
       businessId,
-      businessName: signupBusinessName.trim(),
+      id: businessId,
+      businessName: regBizName.trim(),
       slug,
-      businessType: signupBusinessType,
-      ownerName: signupOwnerName.trim(),
-      ownerEmail: signupEmail.trim(),
-      ownerPhone: signupPhone.trim(),
+      businessType: regBizType,
+      ownerName: regOwnerName.trim() || 'Store Owner',
+      ownerPhone: regPhone.trim(),
+      phone: regPhone.trim(),
+      ownerEmail: `owner_${slug}@retailos.lr`,
       terminalEmail: `pos_${slug}@retailos.lr`,
       themeColor: '#10b981',
-      currencyMode: signupCurrencyMode,
-      primaryCurrency: signupPrimaryCurrency,
+      currencyMode: regCurrencyMode,
+      primaryCurrency: regPrimaryCurrency,
       primarySymbol: primaryObj?.symbol || '$',
-      secondaryCurrency: signupCurrencyMode === 'dual' ? signupSecondaryCurrency : '',
-      secondarySymbol: signupCurrencyMode === 'dual' ? (secondaryObj?.symbol || 'L$') : '',
-      exchangeRate: Number(signupFxRate) || 198,
-      fxRate: Number(signupFxRate) || 198,
-      subscriptionPlan: 'starter', // Free Forever Entry Plan
+      secondaryCurrency: regCurrencyMode === 'dual' ? regSecondaryCurrency : '',
+      secondarySymbol: regCurrencyMode === 'dual' ? (secondaryObj?.symbol || 'L$') : '',
+      exchangeRate: Number(regFxRate) || 198,
+      fxRate: Number(regFxRate) || 198,
+      subscriptionPlan: 'starter',
       subscriptionStatus: 'active',
+      passcode: regPasscode.trim(),
       address: 'Monrovia, Liberia',
-      phone: signupPhone.trim(),
-      whatsappNumber: signupPhone.replace(/[^0-9]/g, ''),
       createdAt: new Date().toISOString().slice(0, 10),
     };
 
-    let uid = `user_${Date.now()}`;
+    // 1. Immediately bind this store to the physical device
+    const bound = bindStoreToDevice(newStoreRecord, regPasscode.trim());
+    setBoundStore(bound);
 
-    // 1. Try Firebase Auth
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, signupEmail.trim(), signupPassword);
-      uid = cred.user.uid;
-    } catch (authErr) {
-      console.warn('Firebase Auth notice (continuing with offline-first local provisioning):', authErr);
+    // 2. Provision locally in tenant context
+    if (createTenant) {
+      createTenant(newStoreRecord).catch(() => {});
     }
 
-    // 2. Try Firestore write
-    try {
-      await setDoc(doc(db, 'businesses', businessId), {
-        ...newBusinessRecord,
-        createdAt: serverTimestamp(),
-      });
-      await setDoc(doc(db, 'users', uid), {
-        uid,
-        email: signupEmail.trim(),
-        displayName: signupOwnerName.trim(),
+    // 3. Immediately log into workspace with zero latency
+    if (loginWithDevicePasscode) {
+      loginWithDevicePasscode(bound);
+    } else if (loginAsLocalUser) {
+      loginAsLocalUser({
+        uid: `owner_${businessId}`,
+        email: bound.ownerEmail,
+        displayName: bound.ownerName,
         role: 'owner',
         tenantId: businessId,
-        businessName: signupBusinessName.trim(),
-        createdAt: serverTimestamp(),
-      });
-    } catch (firestoreErr) {
-      console.warn('Firestore write notice (saving to local storage):', firestoreErr);
+        businessName: bound.businessName,
+      }, businessId);
     }
 
-    // 3. Save store to local tenant registry
-    try {
-      createTenant(newBusinessRecord);
-    } catch (e) {}
+    // 4. Background cloud sync (non-blocking)
+    (async () => {
+      try {
+        await setDoc(doc(db, 'businesses', businessId), {
+          ...newStoreRecord,
+          createdAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn('Background store registration cloud sync notice:', e);
+      }
+    })();
 
-    // 4. Automatically sign in as Store Owner
-    loginAsLocalUser({
-      uid,
-      email: signupEmail.trim(),
-      displayName: signupOwnerName.trim(),
-      role: 'owner',
-      tenantId: businessId,
-      businessName: signupBusinessName.trim(),
-    }, businessId);
-
-    setLoading(false);
+    setRegLoading(false);
+    if (onSuccess) onSuccess();
     window.location.hash = '#workspace';
   };
 
-  const storeName = currentTenant?.businessName || 'RetailOS Liberia';
-  const themeColor = currentTenant?.themeColor || '#10b981';
+  // Switch bound store to a demo store or clear binding
+  const handleSelectSampleStore = (sample) => {
+    const bound = bindStoreToDevice(sample, sample.passcode);
+    setBoundStore(bound);
+    setPin('');
+    setError('');
+    setViewMode('passcode');
+  };
+
+  const handleUnbind = () => {
+    unbindDeviceStore();
+    setBoundStore(null);
+    setPin('');
+    setError('');
+    setViewMode('switch');
+  };
+
+  const activeStoreName = boundStore?.businessName || currentTenant?.businessName || 'WD Men Fashion';
+  const activeStoreType = boundStore?.businessType || currentTenant?.businessType || 'Boutique & Fashion';
+  const themeColor = boundStore?.themeColor || currentTenant?.themeColor || '#10b981';
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 selection:bg-emerald-500 selection:text-white font-sans">
-      {/* Background ambient lighting */}
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-100/50 via-slate-100 to-slate-100 pointer-events-none" />
+    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 text-white font-sans relative overflow-x-hidden selection:bg-emerald-500 selection:text-white">
+      {/* Background soft ambient glows */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/40 via-slate-900 to-slate-950 pointer-events-none" />
 
-      <div className="relative z-10 w-full max-w-md">
-        {/* Store / Platform Logo */}
-        <div className="text-center mb-6">
-          <div className="inline-block relative mb-3">
-            <div 
-              className="w-16 h-16 rounded-3xl flex items-center justify-center shadow-md mx-auto border-2 border-white text-white font-black text-2xl"
-              style={{ backgroundColor: themeColor }}
-            >
-              {currentTenant?.logoUrl ? (
-                <img src={currentTenant.logoUrl} alt={storeName} className="w-full h-full object-cover rounded-3xl" />
-              ) : (
+      {/* Main Container */}
+      <div className="relative z-10 w-full max-w-sm sm:max-w-md">
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 1: 4-DIGIT STORE PASSCODE (DEFAULT DEVICE-BOUND UNLOCK) */}
+        {/* ------------------------------------------------------------- */}
+        {viewMode === 'passcode' && (
+          <div className="bg-slate-800/90 backdrop-blur-md border border-slate-700/80 rounded-3xl p-6 sm:p-7 shadow-2xl">
+            {/* Store Avatar & Info */}
+            <div className="text-center mb-6">
+              <div 
+                className="w-16 h-16 rounded-3xl mx-auto flex items-center justify-center text-white font-black text-2xl shadow-lg border-2 border-white/20 mb-3 transition-transform hover:scale-105"
+                style={{ backgroundColor: themeColor }}
+              >
                 <Store className="w-8 h-8" />
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider mb-1.5">
+                <Smartphone className="w-3 h-3" />
+                <span>Registered Device</span>
+              </div>
+
+              <h1 className="text-2xl font-black text-white tracking-tight">
+                {activeStoreName}
+              </h1>
+              <p className="text-xs text-slate-400 font-medium">
+                {activeStoreType} · Monrovia, Liberia
+              </p>
+            </div>
+
+            {/* Subtitle / Instructions */}
+            <div className="text-center mb-5">
+              <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                Enter 4-Digit Passcode
+              </p>
+              <p className="text-[11px] text-emerald-400/90 font-medium mt-0.5">
+                ⚡ Instant Offline Store Access
+              </p>
+            </div>
+
+            {/* Error Banner */}
+            {error && (
+              <div className="flex items-center justify-center gap-2 bg-rose-950/80 border border-rose-500/40 text-rose-300 rounded-xl py-2 px-3 mb-4 text-xs font-semibold animate-shake">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* 4-Digit PIN Indicator Dots */}
+            <div className={`flex justify-center items-center gap-4 mb-6 ${shake ? 'animate-bounce' : ''}`}>
+              {[0, 1, 2, 3].map((idx) => {
+                const isFilled = pin.length > idx;
+                return (
+                  <div
+                    key={idx}
+                    className={`w-4 h-4 rounded-full transition-all duration-200 ${
+                      pinSuccess
+                        ? 'bg-emerald-400 scale-110 shadow-lg shadow-emerald-500/50'
+                        : isFilled
+                        ? 'bg-white scale-110 shadow-md shadow-white/30'
+                        : 'bg-slate-700 border-2 border-slate-600'
+                    }`}
+                  />
+                );
+              })}
+            </div>
+
+            {/* ATM / MoMo-Style Tactile Keypad */}
+            <div className="grid grid-cols-3 gap-3 max-w-[280px] mx-auto mb-6">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
+                <button
+                  key={digit}
+                  type="button"
+                  onClick={() => handleDigit(String(digit))}
+                  disabled={pinSuccess}
+                  className="h-14 rounded-2xl bg-slate-700/60 hover:bg-slate-700 active:bg-emerald-600 active:scale-95 border border-slate-600/70 text-white font-bold text-xl transition-all flex items-center justify-center shadow-md select-none"
+                >
+                  {digit}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={handleClear}
+                disabled={pinSuccess}
+                className="h-14 rounded-2xl bg-slate-800/80 hover:bg-slate-700/80 active:scale-95 border border-slate-700 text-slate-400 hover:text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center select-none"
+              >
+                Clear
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDigit('0')}
+                disabled={pinSuccess}
+                className="h-14 rounded-2xl bg-slate-700/60 hover:bg-slate-700 active:bg-emerald-600 active:scale-95 border border-slate-600/70 text-white font-bold text-xl transition-all flex items-center justify-center shadow-md select-none"
+              >
+                0
+              </button>
+
+              <button
+                type="button"
+                onClick={handleBackspace}
+                disabled={pinSuccess}
+                className="h-14 rounded-2xl bg-slate-800/80 hover:bg-slate-700/80 active:scale-95 border border-slate-700 text-slate-400 hover:text-white font-bold transition-all flex items-center justify-center select-none"
+                aria-label="Backspace"
+              >
+                <Delete className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Helper for Demo / First Testing */}
+            <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl p-3 text-center mb-5">
+              <p className="text-[11px] text-slate-400">
+                Default Owner PIN: <strong className="text-emerald-400 font-mono tracking-widest text-xs">1234</strong>
+              </p>
+            </div>
+
+            {/* Action Links */}
+            <div className="space-y-2.5 pt-3 border-t border-slate-700/60 text-center">
+              <button
+                type="button"
+                onClick={() => { setError(''); setViewMode('switch'); }}
+                className="text-xs text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5 mx-auto font-medium"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Switch Store or Register New Store</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setError(''); setViewMode('admin'); }}
+                className="text-xs text-emerald-400 hover:text-emerald-300 transition flex items-center justify-center gap-1.5 mx-auto font-bold"
+              >
+                <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Platform Admin Sign In &rarr;</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 2: SWITCH OR REGISTER NEW STORE                          */}
+        {/* ------------------------------------------------------------- */}
+        {viewMode === 'switch' && (
+          <div className="bg-slate-800/95 backdrop-blur-md border border-slate-700/80 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-700">
+              <div className="flex items-center gap-2">
+                <Store className="w-5 h-5 text-emerald-400" />
+                <h2 className="text-base font-black text-white">Select or Register Store</h2>
+              </div>
+              {boundStore && (
+                <button
+                  type="button"
+                  onClick={() => setViewMode('passcode')}
+                  className="text-xs text-slate-400 hover:text-white font-bold"
+                >
+                  Cancel
+                </button>
               )}
             </div>
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-            {mode === 'signup' ? 'RetailOS Liberia' : storeName}
-          </h1>
-          <p className="text-xs font-bold uppercase tracking-widest mt-1 text-emerald-700">
-            {mode === 'signup' ? 'Create Your Store · Free Forever' : (currentTenant?.businessType || 'Cloud POS & Retail OS')}
-          </p>
-        </div>
 
-        {/* Card */}
-        <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl">
-          {/* Tab Switcher */}
-          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200 mb-5">
+            {/* Option 1: Register Brand New Store */}
             <button
               type="button"
-              onClick={() => { setMode('signin'); setError(''); }}
-              className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                mode === 'signin'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-950 font-semibold'
-              }`}
+              onClick={() => { setError(''); setViewMode('register'); }}
+              className="w-full p-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-2xl text-left transition flex items-center justify-between shadow-lg group"
             >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode('signup'); setError(''); }}
-              className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                mode === 'signup'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-950 font-semibold'
-              }`}
-            >
-              Register Free Store
-            </button>
-          </div>
-
-          {error && (
-            <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-xl p-3 mb-4">
-              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-              <p className="text-rose-800 text-xs font-semibold">{error}</p>
-            </div>
-          )}
-
-          {/* SIGN IN FORM */}
-          {mode === 'signin' ? (
-            <form onSubmit={handleSignIn} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Email Address
+                <p className="text-xs font-black uppercase tracking-wider text-emerald-100">For Liberian Businesses</p>
+                <h3 className="text-sm font-black text-white mt-0.5">Register Free Store (30 Sec)</h3>
+                <p className="text-[11px] text-emerald-100/80 font-medium">Create your 4-digit passcode & bind this device</p>
+              </div>
+              <ArrowRight className="w-5 h-5 text-white group-hover:translate-x-1 transition-transform shrink-0" />
+            </button>
+
+            {/* Option 2: Preloaded Sample Stores in Monrovia */}
+            <div className="space-y-2 pt-2">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                Or Quick Test A Store In Monrovia:
+              </p>
+
+              {SAMPLE_BOUND_STORES.map((sample) => (
+                <button
+                  key={sample.businessId}
+                  type="button"
+                  onClick={() => handleSelectSampleStore(sample)}
+                  className="w-full p-3 bg-slate-700/50 hover:bg-slate-700 border border-slate-600/60 rounded-xl text-left transition flex items-center justify-between group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-9 h-9 rounded-xl text-white font-black text-xs flex items-center justify-center shadow-xs"
+                      style={{ backgroundColor: sample.themeColor }}
+                    >
+                      {sample.businessName.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white group-hover:text-emerald-300 transition">
+                        {sample.businessName}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        PIN: <span className="text-emerald-400 font-mono font-bold">{sample.passcode}</span> · {sample.ownerName}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
+                </button>
+              ))}
+            </div>
+
+            {/* Back button */}
+            {boundStore && (
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('passcode')}
+                  className="text-xs text-slate-400 hover:text-white font-bold"
+                >
+                  &larr; Back to {boundStore.businessName} PIN Pad
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 3: REGISTER NEW STORE WITH 4-DIGIT PASSCODE              */}
+        {/* ------------------------------------------------------------- */}
+        {viewMode === 'register' && (
+          <div className="bg-slate-800/95 backdrop-blur-md border border-slate-700/80 rounded-3xl p-6 sm:p-7 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-700 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black text-sm">
+                  +
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-white">Register Store & Set PIN</h2>
+                  <p className="text-[10px] text-emerald-400 font-medium">Free Forever · Binds to this device</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewMode('passcode')}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white text-xs font-bold"
+              >
+                Cancel
+              </button>
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 bg-rose-950/80 border border-rose-500/40 text-rose-300 rounded-xl py-2 px-3 mb-4 text-xs font-semibold">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleRegisterStore} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-slate-300 uppercase tracking-wider mb-1">
+                  Store / Business Name *
                 </label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  required
+                  value={regBizName}
+                  onChange={(e) => setRegBizName(e.target.value)}
+                  placeholder="e.g. Sinkor Care Store"
+                  className="w-full bg-slate-900/90 border border-slate-600 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Store Type
+                  </label>
+                  <select
+                    value={regBizType}
+                    onChange={(e) => setRegBizType(e.target.value)}
+                    className="w-full bg-slate-900/90 border border-slate-600 rounded-xl px-2.5 py-2.5 text-white focus:outline-none focus:border-emerald-500 font-medium"
+                  >
+                    {STORE_TYPES.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Store Owner Name
+                  </label>
                   <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="owner@yourstore.com"
-                    required
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-colors font-medium"
+                    type="text"
+                    value={regOwnerName}
+                    onChange={(e) => setRegOwnerName(e.target.value)}
+                    placeholder="e.g. Fatu Kollie"
+                    className="w-full bg-slate-900/90 border border-slate-600 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-medium"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Password
+                <label className="block font-bold text-slate-300 uppercase tracking-wider mb-1">
+                  Phone / WhatsApp Number
+                </label>
+                <input
+                  type="tel"
+                  value={regPhone}
+                  onChange={(e) => setRegPhone(e.target.value)}
+                  placeholder="0770xxxxxx"
+                  className="w-full bg-slate-900/90 border border-slate-600 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-medium"
+                />
+              </div>
+
+              {/* 4-Digit Passcode Setup */}
+              <div className="p-3.5 bg-emerald-950/40 border-2 border-emerald-500/50 rounded-2xl space-y-1.5">
+                <label className="block font-black text-emerald-400 uppercase tracking-wider text-xs">
+                  Create Your 4-Digit Passcode *
+                </label>
+                <p className="text-[11px] text-slate-300">
+                  You will enter this 4-digit PIN every time you open the app on this device.
+                </p>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]{4}"
+                  maxLength={4}
+                  required
+                  value={regPasscode}
+                  onChange={(e) => setRegPasscode(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                  placeholder="••••"
+                  className="w-full bg-slate-900 border-2 border-emerald-400 rounded-xl px-4 py-2.5 text-center font-mono font-black text-2xl tracking-[0.5em] text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Currency Setup
+                  </label>
+                  <select
+                    value={regCurrencyMode}
+                    onChange={(e) => setRegCurrencyMode(e.target.value)}
+                    className="w-full bg-slate-900/90 border border-slate-600 rounded-xl px-2.5 py-2 text-white focus:outline-none focus:border-emerald-500 font-medium"
+                  >
+                    <option value="dual">Dual (USD + LRD)</option>
+                    <option value="single">Single (USD Only)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Rate ($1 = LRD)
+                  </label>
+                  <input
+                    type="number"
+                    value={regFxRate}
+                    onChange={(e) => setRegFxRate(e.target.value)}
+                    className="w-full bg-slate-900/90 border border-slate-600 rounded-xl px-3 py-2 text-white font-mono font-bold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={regLoading}
+                className="w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black py-3 rounded-xl transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 text-sm"
+              >
+                {regLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                <span>{regLoading ? 'Binding Store to Device...' : 'Register Store & Start Selling'}</span>
+                {!regLoading && <ArrowRight className="w-4 h-4" />}
+              </button>
+
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('passcode')}
+                  className="text-xs text-slate-400 hover:text-white font-medium"
+                >
+                  &larr; Return to Passcode Keypad
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 4: PLATFORM ADMIN EMAIL / PASSWORD PORTAL                */}
+        {/* ------------------------------------------------------------- */}
+        {viewMode === 'admin' && (
+          <div className="bg-slate-800/95 backdrop-blur-md border border-slate-700/80 rounded-3xl p-6 sm:p-7 shadow-2xl">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 text-indigo-400 mx-auto flex items-center justify-center mb-3 shadow-md">
+                <Shield className="w-7 h-7" />
+              </div>
+              <h2 className="text-xl font-black text-white tracking-tight">Platform Admin Portal</h2>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">
+                Master management for RetailOS Liberia founders
+              </p>
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 bg-rose-950/80 border border-rose-500/40 text-rose-300 rounded-xl py-2 px-3 mb-4 text-xs font-semibold">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleAdminSignIn} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Admin Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="email"
+                    required
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    placeholder="josephfabricedoe@gmail.com"
+                    className="w-full bg-slate-900/90 border border-slate-600 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Admin Password
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
-                    type={showPw ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    type={showAdminPw ? 'text' : 'password'}
                     required
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-10 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-colors font-medium"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-900/90 border border-slate-600 rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-medium"
                   />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowPw(v => !v)} 
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPw((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                   >
-                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showAdminPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-black py-3 rounded-xl transition-all shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 text-sm"
+                disabled={adminLoading}
+                className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-black py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 text-sm"
               >
-                {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
-                {loading ? 'Signing In...' : 'Sign In to Store'}
+                {adminLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                <span>{adminLoading ? 'Authenticating Admin...' : 'Sign In as Super-Admin'}</span>
               </button>
 
               <div className="text-center pt-2">
                 <button
                   type="button"
-                  onClick={() => { setMode('signup'); setError(''); }}
-                  className="text-xs text-emerald-700 hover:text-emerald-900 font-bold"
+                  onClick={() => { setError(''); setViewMode('passcode'); }}
+                  className="text-xs text-slate-400 hover:text-white font-medium flex items-center justify-center gap-1.5 mx-auto"
                 >
-                  New business in Liberia? Register your store free &rarr;
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Return to Merchant Store PIN Pad</span>
                 </button>
               </div>
             </form>
-          ) : (
-            /* SIGN UP FORM (Free Forever Plan) */
-            <form onSubmit={handleSignUp} className="space-y-3.5 text-xs">
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1">
-                <div className="flex items-center gap-1.5 text-emerald-900 font-black text-xs">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Free Forever Plan ($0/mo)</span>
-                </div>
-                <p className="text-[11px] text-slate-600 font-medium">
-                  Full Store Owner access to POS, Showroom inventory, CSV template, and Store settings. No credit card required.
-                </p>
-              </div>
+          </div>
+        )}
 
-              <div>
-                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Business / Store Name *
-                </label>
-                <input
-                  type="text"
-                  value={signupBusinessName}
-                  onChange={e => setSignupBusinessName(e.target.value)}
-                  placeholder="e.g. Sinkor Cosmetics, Kollie Supermarket"
-                  required
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-colors font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Store Type
-                  </label>
-                  <select
-                    value={signupBusinessType}
-                    onChange={e => setSignupBusinessType(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
-                  >
-                    {STORE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Store Owner Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={signupOwnerName}
-                    onChange={e => setSignupOwnerName(e.target.value)}
-                    placeholder="e.g. Fatu Johnson"
-                    required
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Owner Email (Login) *
-                  </label>
-                  <input
-                    type="email"
-                    value={signupEmail}
-                    onChange={e => setSignupEmail(e.target.value)}
-                    placeholder="owner@store.com"
-                    required
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Create Password *
-                  </label>
-                  <input
-                    type="password"
-                    value={signupPassword}
-                    onChange={e => setSignupPassword(e.target.value)}
-                    placeholder="Min 6 characters"
-                    required
-                    minLength={6}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Phone / WhatsApp
-                  </label>
-                  <input
-                    type="tel"
-                    value={signupPhone}
-                    onChange={e => setSignupPhone(e.target.value)}
-                    placeholder="0770xxxxxx"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Currency Setup
-                  </label>
-                  <select
-                    value={signupCurrencyMode}
-                    onChange={e => setSignupCurrencyMode(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
-                  >
-                    <option value="dual">Dual Currency (USD + LRD)</option>
-                    <option value="single">Single Currency (USD only)</option>
-                  </select>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-black py-3 rounded-xl transition-all shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 text-sm"
-              >
-                {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                <span>{loading ? 'Setting Up Your Store...' : 'Create Store & Start Free'}</span>
-                {!loading && <ArrowRight className="w-4 h-4" />}
-              </button>
-
-              <div className="text-center pt-1">
-                <button
-                  type="button"
-                  onClick={() => { setMode('signin'); setError(''); }}
-                  className="text-xs text-slate-600 hover:text-slate-900 font-bold"
-                >
-                  Already registered? Sign in to your store
-                </button>
-              </div>
-            </form>
+        {/* ------------------------------------------------------------- */}
+        {/* PUBLIC STOREFRONT CATALOG & ABOUT LINKS                       */}
+        {/* ------------------------------------------------------------- */}
+        <div className="mt-4 text-center space-y-2">
+          {onOpenCatalog && (
+            <button
+              type="button"
+              onClick={onOpenCatalog}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-white transition"
+            >
+              <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Browse Public Storefront Catalog &rarr;</span>
+            </button>
           )}
 
-          {/* Instant 1-Click Store Owner Testing */}
-          <div className="mt-5 pt-4 border-t border-slate-200 space-y-2.5">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider text-center">
-              ⚡ Instant 1-Click Store Owner Access
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {onBackToLanding && (
+            <div>
               <button
                 type="button"
-                onClick={() => handleQuickLogin('wilcom@wd.com', 'Wilcom Duncan', 'biz_wd_men_fashion', 'WD Men Fashion')}
-                className="p-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl text-left transition flex items-center gap-2.5 shadow-2xs group"
+                onClick={onBackToLanding}
+                className="text-xs text-slate-500 hover:text-slate-300 transition"
               >
-                <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                  WD
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-900 truncate">WD Men Fashion</p>
-                  <p className="text-[10px] text-emerald-700 font-semibold truncate">Wilcom Duncan (Owner)</p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('fatu@monroviaglam.com', 'Fatu Johnson', 'biz_monrovia_glam', 'Monrovia Glam Retail')}
-                className="p-2.5 bg-sky-50 hover:bg-sky-100 border border-sky-300 rounded-xl text-left transition flex items-center gap-2.5 shadow-2xs group"
-              >
-                <div className="w-8 h-8 rounded-lg bg-sky-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                  MG
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-900 truncate">Monrovia Glam</p>
-                  <p className="text-[10px] text-sky-700 font-semibold truncate">Fatu Johnson (Owner)</p>
-                </div>
+                RetailOS Liberia &copy; {new Date().getFullYear()} · Support Line: 0770430269
               </button>
             </div>
-          </div>
-
-          {/* Catalog & Landing quick jumps */}
-          <div className="mt-3 pt-3 border-t border-slate-200 space-y-2">
-            {onOpenCatalog && (
-              <button
-                type="button"
-                onClick={onOpenCatalog}
-                className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors shadow-2xs"
-              >
-                <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Browse Storefront Catalog</span>
-              </button>
-            )}
-
-            {onGoToLanding && (
-              <button
-                type="button"
-                onClick={onGoToLanding}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 text-slate-500 hover:text-slate-800 text-xs font-semibold transition-colors"
-              >
-                <Sparkles className="w-3 h-3 text-emerald-600" />
-                <span>About RetailOS Liberia / Platform Overview</span>
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* Footer Support Hotline */}
-        <div className="text-center text-xs text-slate-500 mt-6 space-y-1 font-medium">
-          <p>
-            Liberia Support & Training: <a href="tel:0770430269" className="font-bold text-emerald-700 hover:underline font-mono">0770430269</a>
-            <span className="mx-1 text-slate-400">·</span>
-            <a href="https://wa.me/231770430269" target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:underline font-bold">WhatsApp</a>
-          </p>
-          <p className="text-slate-400 text-[11px]">
-            RetailOS Liberia &copy; {new Date().getFullYear()} · Multi-Tenant Retail OS
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -55,6 +55,19 @@ export function AuthProvider({ children }) {
     setCurrentUser(userObj);
   };
 
+  const loginWithDevicePasscode = (store) => {
+    const userObj = {
+      uid: `owner_${store.businessId}`,
+      email: store.ownerEmail || store.terminalEmail || `owner_${store.slug || 'store'}@retailos.lr`,
+      displayName: store.ownerName || 'Store Owner',
+      role: 'owner',
+      tenantId: store.businessId,
+      businessName: store.businessName,
+    };
+    loginAsLocalUser(userObj, store.businessId);
+    return userObj;
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -235,6 +248,7 @@ export function AuthProvider({ children }) {
       signIn,
       signOut,
       loginAsLocalUser,
+      loginWithDevicePasscode,
       createAccount,
       currentRole,
       setRole,

@@ -6,6 +6,7 @@ import { WEST_AFRICAN_CURRENCIES } from '../../hooks/useCurrency';
 import { auth, db } from '../../firebase/config';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { bindStoreToDevice } from '../../utils/deviceBinding';
 
 const STORE_TYPES = [
   'Boutique & Fashion',
@@ -36,6 +37,7 @@ export default function NewStoreModal({ onClose, onCreated }) {
   const [ownerName, setOwnerName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passcode, setPasscode] = useState('1234');
   const [ownerPhone, setOwnerPhone] = useState('');
   const [terminalEmail, setTerminalEmail] = useState('');
   const [themeColor, setThemeColor] = useState('#10b981');
@@ -90,19 +92,16 @@ export default function NewStoreModal({ onClose, onCreated }) {
       fxRate: Number(exchangeRate) || 198,
       subscriptionPlan,
       subscriptionStatus: 'active',
+      passcode: passcode.trim() || '1234',
       address: address.trim() || 'Monrovia, Liberia',
       phone: ownerPhone.trim(),
       whatsappNumber: ownerPhone.replace(/[^0-9]/g, ''),
       createdAt: new Date().toISOString().slice(0, 10),
     };
 
-    // 1. Instantly save store to local registry
+    // 1. Instantly save store and bind device
     try {
-      const raw = localStorage.getItem('retailos_local_tenants');
-      const existing = raw ? JSON.parse(raw) : [];
-      const updated = [fullRecord, ...existing.filter(t => (t.businessId || t.id) !== storeId)];
-      localStorage.setItem('retailos_local_tenants', JSON.stringify(updated));
-      localStorage.setItem('retailos_active_tenant_id', storeId);
+      bindStoreToDevice(fullRecord, passcode.trim() || '1234');
     } catch (e) {}
 
     // 2. Instantly log in user as Store Owner
@@ -350,16 +349,19 @@ export default function NewStoreModal({ onClose, onCreated }) {
 
             <div>
               <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Login Password
+                4-Digit Store Passcode *
               </label>
               <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min 6 characters"
-                minLength={6}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
+                type="text"
+                pattern="[0-9]{4}"
+                maxLength={4}
+                required
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                placeholder="1234"
+                className="w-full bg-slate-50 border-2 border-emerald-500/40 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 font-mono font-bold text-center tracking-widest text-base"
               />
+              <p className="text-[10px] text-slate-500 mt-1">4-digit PIN for instant offline store access</p>
             </div>
 
             <div>

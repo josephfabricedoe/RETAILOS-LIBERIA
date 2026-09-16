@@ -16,7 +16,8 @@ import {
   TrendingUp,
   Phone,
   HelpCircle,
-  Award
+  Award,
+  KeyRound
 } from 'lucide-react';
 import NewStoreModal from '../components/superadmin/NewStoreModal';
 
@@ -87,15 +88,16 @@ export default function LandingPage({ onGoToLogin, onStoreRegistered }) {
             </a>
             <button
               onClick={onGoToLogin}
-              className="px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-950 rounded-xl hover:bg-slate-100 transition-colors"
+              className="px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-950 rounded-xl hover:bg-slate-100 transition-colors flex items-center gap-1.5"
             >
-              Staff Sign In
+              <KeyRound className="w-4 h-4 text-emerald-600" />
+              <span>Enter Store (PIN)</span>
             </button>
             <button
               onClick={() => setShowTrialModal(true)}
               className="px-4 py-2 text-xs sm:text-sm font-extrabold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-md shadow-emerald-600/25 transition-all flex items-center gap-1.5"
             >
-              <span>Get Started Free</span>
+              <span>Register Free Store</span>
               <ArrowRight className="w-4 h-4 hidden sm:inline" />
             </button>
           </div>
