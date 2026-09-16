@@ -9,6 +9,7 @@ import Cart from './Cart';
 import ReceiptModal from './ReceiptModal';
 import ReceiptsHistoryModal from './ReceiptsHistoryModal';
 import { getPriceForMode } from './PricingModeSwitcher';
+import { loadSampleProducts } from '../../utils/sampleProducts';
 import { 
   PackageOpen, 
   AlertCircle, 
@@ -71,6 +72,19 @@ export default function POSView() {
   const [orderDiscountValue, setOrderDiscountValue] = useState('');
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
+  const [loadingSamples, setLoadingSamples] = useState(false);
+
+  const handleLoadSampleProducts = async () => {
+    try {
+      setLoadingSamples(true);
+      await loadSampleProducts(getTenantDoc);
+    } catch (err) {
+      console.error('Failed to load sample products in POS:', err);
+      alert('Could not load sample products: ' + err.message);
+    } finally {
+      setLoadingSamples(false);
+    }
+  };
 
   // Subscribe to live products from tenant subcollection
   useEffect(() => {
@@ -396,10 +410,21 @@ export default function POSView() {
           )}
 
           {displayProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-center text-slate-500">
+            <div className="flex flex-col items-center justify-center h-56 text-center text-slate-500">
               <PackageOpen className="w-10 h-10 mb-2 text-slate-400" />
               <p className="text-sm font-bold text-slate-700">No products available in this view</p>
               <p className="text-xs text-slate-500 mt-0.5">Add items from the Inventory module or adjust your search.</p>
+              {allProducts.length === 0 && (
+                <button
+                  type="button"
+                  onClick={handleLoadSampleProducts}
+                  disabled={loadingSamples}
+                  className="mt-3 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>{loadingSamples ? 'Loading Samples...' : 'Load 8 Sample Liberian Products'}</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">

@@ -6,9 +6,10 @@ import ProductForm from './ProductForm';
 import BarcodeLabelModal from './BarcodeLabelModal';
 import {
   AlertTriangle, Edit2, PlusCircle, Download,
-  Search, ChevronDown, ChevronRight, Package, Tag, Boxes, FileSpreadsheet, Upload, Sparkles
+  Search, ChevronDown, ChevronRight, Package, Tag, Boxes, FileSpreadsheet, Upload, Sparkles, Trash2
 } from 'lucide-react';
 import { downloadCSV, downloadSampleInventoryTemplate } from '../../utils/exportCsv';
+import { loadSampleProducts, clearSampleProducts } from '../../utils/sampleProducts';
 import { DEFAULT_RETAIL_CATEGORIES } from '../pos/POSView';
 
 export default function ShowroomTable({ onRestockClick, onOpenImport }) {
@@ -22,6 +23,8 @@ export default function ShowroomTable({ onRestockClick, onOpenImport }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [collapsedCategories, setCollapsedCategories] = useState({});
+  const [loadingSamples, setLoadingSamples] = useState(false);
+  const [clearingSamples, setClearingSamples] = useState(false);
   const { format } = useCurrency();
 
   useEffect(() => {
@@ -84,9 +87,54 @@ export default function ShowroomTable({ onRestockClick, onOpenImport }) {
 
   const totalShowroomItems = products.reduce((s, p) => s + (p.showroomQty || 0), 0);
   const totalShowroomValue = products.reduce((s, p) => s + ((p.showroomQty || 0) * (p.retailPrice || 0)), 0);
+  const sampleProductsCount = products.filter(p => p.isSample).length;
+
+  const handleLoadSamples = async () => {
+    try {
+      setLoadingSamples(true);
+      await loadSampleProducts(getTenantDoc);
+    } catch (err) {
+      console.error('Failed to load sample products:', err);
+      alert('Could not load sample products: ' + err.message);
+    } finally {
+      setLoadingSamples(false);
+    }
+  };
+
+  const handleClearSamples = async () => {
+    if (!window.confirm('Wipe all sample demo items? Any real products you added will be preserved.')) return;
+    try {
+      setClearingSamples(true);
+      await clearSampleProducts(getTenantCol, getTenantDoc);
+    } catch (err) {
+      console.error('Failed to clear sample products:', err);
+      alert('Could not clear sample products: ' + err.message);
+    } finally {
+      setClearingSamples(false);
+    }
+  };
 
   return (
     <div className="p-4 space-y-4">
+      {/* Sample Items Banner */}
+      {sampleProductsCount > 0 && (
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs">
+          <div className="flex items-center gap-2 text-emerald-900 font-bold">
+            <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Showing {sampleProductsCount} Liberian retail sample products for testing.</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleClearSamples}
+            disabled={clearingSamples}
+            className="px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-2xs shrink-0"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>{clearingSamples ? 'Clearing...' : 'Clear Demo Items'}</span>
+          </button>
+        </div>
+      )}
+
       {/* Top Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -205,7 +253,7 @@ export default function ShowroomTable({ onRestockClick, onOpenImport }) {
                         </p>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
                         <button
                           type="button"
                           onClick={downloadSampleInventoryTemplate}
@@ -234,6 +282,19 @@ export default function ShowroomTable({ onRestockClick, onOpenImport }) {
                           <PlusCircle className="w-6 h-6 text-emerald-400 mb-2 group-hover:scale-110 transition-transform" />
                           <span className="text-xs font-bold text-white">3. Add Manually</span>
                           <span className="text-[10px] text-slate-400 mt-1">Single product form</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleLoadSamples}
+                          disabled={loadingSamples}
+                          className="flex flex-col items-center justify-center p-4 bg-emerald-950/30 hover:bg-emerald-900/40 border border-emerald-800/60 hover:border-emerald-400 rounded-2xl transition-all group text-center disabled:opacity-50"
+                        >
+                          <Sparkles className="w-6 h-6 text-amber-300 mb-2 group-hover:scale-110 transition-transform" />
+                          <span className="text-xs font-bold text-emerald-200">
+                            {loadingSamples ? 'Loading...' : '4. Load Sample Pack'}
+                          </span>
+                          <span className="text-[10px] text-emerald-400/80 mt-1">8 Liberian retail items</span>
                         </button>
                       </div>
                     </div>
