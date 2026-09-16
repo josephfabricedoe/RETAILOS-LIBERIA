@@ -35,7 +35,7 @@ import {
   ArrowLeft,
   Sparkles
 } from 'lucide-react';
-import { canAccessModule, normalizeRole, getDefaultModuleForRole, ROLE_DEFINITIONS } from '../../utils/rbac';
+import { canAccessModule, normalizeRole, getDefaultModuleForRole, ROLE_DEFINITIONS, isModuleAvailableForPlan } from '../../utils/rbac';
 
 const MODULE_VIEWS = {
   pos:        POSView,

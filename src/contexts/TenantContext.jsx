@@ -158,7 +158,7 @@ export function TenantProvider({ children, currentUser }) {
 
   // Update current tenant configuration
   const updateTenant = async (fields) => {
-    const bizId = currentTenant?.businessId || currentTenantId || DEFAULT_DEMO_BUSINESS.businessId;
+    const bizId = currentTenant?.businessId || currentTenantId || 'default';
     await setDoc(doc(db, 'businesses', bizId), {
       ...fields,
       updatedAt: serverTimestamp(),
@@ -226,7 +226,7 @@ export function TenantProvider({ children, currentUser }) {
 
     const activeStoreObj = currentTenant
       ? { ...currentTenant, name: currentTenant.businessName || currentTenant.name || 'Store', fxRate: currentTenant.exchangeRate || 198 }
-      : { ...DEFAULT_DEMO_BUSINESS, name: DEFAULT_DEMO_BUSINESS.businessName, fxRate: DEFAULT_DEMO_BUSINESS.exchangeRate };
+      : { businessId: 'default', id: 'default', businessName: 'RetailOS Store', name: 'RetailOS Store', fxRate: 198, exchangeRate: 198, primaryCurrency: 'USD', secondaryCurrency: 'LRD' };
 
   return (
     <TenantContext.Provider value={{
