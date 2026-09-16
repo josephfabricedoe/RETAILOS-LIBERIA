@@ -17,9 +17,20 @@ import {
   MessageCircle,
   Lock,
   Store,
-  Sparkles
+  Sparkles,
+  DollarSign,
+  ShieldCheck,
+  ArrowLeft,
+  Wrench
 } from 'lucide-react';
 import { canAccessModule, normalizeRole, ROLE_DEFINITIONS, isModuleAvailableForPlan, getRequiredPlanForModule, PLAN_TIERS } from '../../utils/rbac';
+
+const SUPERADMIN_NAV_ITEMS = [
+  { id: 'stores',      label: 'Client Businesses',   icon: Building2 },
+  { id: 'financials',  label: 'Platform Financials', icon: DollarSign },
+  { id: 'inquiries',   label: 'Inbound Leads',       icon: Users },
+  { id: 'system',      label: 'Technical Health',    icon: ShieldCheck },
+];
 
 const NAV_ITEMS = [
   { id: 'pos',        label: 'Point of Sale',           icon: ShoppingCart },
@@ -59,7 +70,7 @@ function NavButton({ id, label, icon: Icon, active, isOpen, onClick, highlight =
 }
 
 export default function Sidebar({ onSignOut }) {
-  const { activeModule, setActiveModule, isSidebarOpen, toggleSidebar } = useApp();
+  const { activeModule, setActiveModule, adminTab, setAdminTab, isSidebarOpen, toggleSidebar } = useApp();
   const { userProfile, signOut, isSharedTerminal, lockTerminalStaff, isSuperAdmin, currentUser, setRole } = useAuth();
   const { currentTenant } = useTenant();
 
@@ -93,9 +104,11 @@ export default function Sidebar({ onSignOut }) {
       <div className="flex items-center gap-2.5 p-4 border-b border-slate-200 bg-slate-50/70">
         <div 
           className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-xs shadow-sm"
-          style={{ backgroundColor: themeColor }}
+          style={{ backgroundColor: isSuperAdmin && activeModule === 'superadmin' ? '#0f172a' : themeColor }}
         >
-          {currentTenant?.logoUrl ? (
+          {isSuperAdmin && activeModule === 'superadmin' ? (
+            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+          ) : currentTenant?.logoUrl ? (
             <img src={currentTenant.logoUrl} alt={storeName} className="w-full h-full object-cover rounded-xl" />
           ) : (
             (storeName || 'R')[0]
@@ -104,10 +117,10 @@ export default function Sidebar({ onSignOut }) {
         {isSidebarOpen && (
           <div className="min-w-0">
             <span className="font-extrabold text-slate-900 text-sm tracking-tight block leading-tight truncate">
-              {storeName}
+              {isSuperAdmin && activeModule === 'superadmin' ? 'RetailOS Master' : storeName}
             </span>
             <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider block">
-              RetailOS Liberia
+              {isSuperAdmin && activeModule === 'superadmin' ? 'Operator Control Suite' : 'RetailOS Liberia'}
             </span>
           </div>
         )}
@@ -122,43 +135,82 @@ export default function Sidebar({ onSignOut }) {
 
       {/* Main Navigation */}
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-        {/* Super-Admin Direct Entry Link */}
-        {isSuperAdmin && (
-          <div className="mb-2 pb-2 border-b border-slate-200">
-            <NavButton
-              id="superadmin"
-              label="Super-Admin Hub"
-              icon={Sparkles}
-              active={activeModule === 'superadmin'}
-              isOpen={isSidebarOpen}
-              onClick={setActiveModule}
-              highlight={true}
-            />
+        {isSuperAdmin && activeModule === 'superadmin' ? (
+          // Super-Admin Operator Navigation (NO POS, NO Inventory!)
+          <div className="space-y-1">
+            <div className="px-3 py-1 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">
+              {isSidebarOpen ? 'Platform Operations' : 'Ops'}
+            </div>
+            {SUPERADMIN_NAV_ITEMS.map((item) => (
+              <NavButton
+                key={item.id}
+                id={item.id}
+                label={item.label}
+                icon={item.icon}
+                active={adminTab === item.id}
+                isOpen={isSidebarOpen}
+                onClick={() => {
+                  setActiveModule('superadmin');
+                  setAdminTab(item.id);
+                }}
+              />
+            ))}
           </div>
+        ) : isSuperAdmin && activeModule !== 'superadmin' ? (
+          // Technician Store Servicing Mode
+          <div className="space-y-1">
+            <div className="mb-2 pb-2 border-b border-slate-200">
+              <button
+                onClick={() => setActiveModule('superadmin')}
+                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-sm transition-all ${
+                  !isSidebarOpen ? 'justify-center px-2' : ''
+                }`}
+                title="Return to Super-Admin Master Control Center"
+              >
+                <ArrowLeft className="w-4 h-4 shrink-0" />
+                {isSidebarOpen && <span>Exit to Admin Hub</span>}
+              </button>
+            </div>
+            <div className="px-3 py-1 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">
+              {isSidebarOpen ? `Servicing: ${currentTenant?.businessName || 'Store'}` : 'Store'}
+            </div>
+            {filtered.map(item => (
+              <NavButton
+                key={item.id}
+                id={item.id}
+                label={item.label}
+                icon={item.icon}
+                active={activeModule === item.id}
+                isOpen={isSidebarOpen}
+                onClick={setActiveModule}
+              />
+            ))}
+          </div>
+        ) : (
+          // Standard Retail Merchant / Cashier Navigation
+          filtered.map(item => {
+            const isLocked = !isSuperAdmin && !isModuleAvailableForPlan(storePlan, item.id);
+            const reqPlan = getRequiredPlanForModule(item.id);
+            return (
+              <NavButton
+                key={item.id}
+                id={item.id}
+                label={item.label}
+                icon={item.icon}
+                active={activeModule === item.id}
+                isOpen={isSidebarOpen}
+                onClick={setActiveModule}
+                isLocked={isLocked}
+                requiredPlan={reqPlan}
+              />
+            );
+          })
         )}
-
-        {filtered.map(item => {
-          const isLocked = !isSuperAdmin && !isModuleAvailableForPlan(storePlan, item.id);
-          const reqPlan = getRequiredPlanForModule(item.id);
-          return (
-            <NavButton
-              key={item.id}
-              id={item.id}
-              label={item.label}
-              icon={item.icon}
-              active={activeModule === item.id}
-              isOpen={isSidebarOpen}
-              onClick={setActiveModule}
-              isLocked={isLocked}
-              requiredPlan={reqPlan}
-            />
-          );
-        })}
       </nav>
 
       {/* Bottom Actions */}
       <div className="p-2 border-t border-slate-200 bg-slate-50/50 space-y-1">
-        {bottomFiltered.map(item => (
+        {(!isSuperAdmin || activeModule !== 'superadmin') && bottomFiltered.map(item => (
           <NavButton
             key={item.id}
             id={item.id}

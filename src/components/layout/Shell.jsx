@@ -186,47 +186,52 @@ export default function Shell({ onGoToCatalog, onGoToLanding, onSignOut }) {
             </p>
           </div>
 
-          {/* Public Storefront Link */}
-          {onGoToCatalog && (
-            <button
-              type="button"
-              onClick={onGoToCatalog}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-black border border-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
-              title="View Public Customer Storefront Catalog"
-            >
-              <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Storefront</span>
-            </button>
-          )}
+          {/* Store-Level Controls (Hidden in Super-Admin mode) */}
+          {activeModule !== 'superadmin' && (
+            <>
+              {/* Public Storefront Link */}
+              {onGoToCatalog && (
+                <button
+                  type="button"
+                  onClick={onGoToCatalog}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-black border border-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                  title="View Public Customer Storefront Catalog"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="hidden sm:inline">Storefront</span>
+                </button>
+              )}
 
-          {/* Multi-Device QR Pairing for Store Owners */}
-          {(userRole === 'owner' || isSuper) && (
-            <button
-              type="button"
-              onClick={() => setShowPairingModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-xl text-xs font-bold transition shadow-xs"
-              title="Connect another phone, tablet, or PC to this store"
-            >
-              <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="hidden lg:inline">Link Device</span>
-            </button>
-          )}
+              {/* Multi-Device QR Pairing for Store Owners */}
+              {(userRole === 'owner' || isSuper) && (
+                <button
+                  type="button"
+                  onClick={() => setShowPairingModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-xl text-xs font-bold transition shadow-xs"
+                  title="Connect another phone, tablet, or PC to this store"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="hidden lg:inline">Link Device</span>
+                </button>
+              )}
 
-          {/* Shared Terminal Lock / Switch Staff */}
-          {isSharedTerminal && (
-            <button
-              type="button"
-              onClick={lockTerminalStaff}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold transition shadow-xs"
-              title="Lock register and switch staff PIN"
-            >
-              <Lock className="w-3.5 h-3.5 text-amber-600" />
-              <span className="hidden sm:inline">Switch Staff</span>
-              <span className="sm:hidden">Lock</span>
-            </button>
-          )}
+              {/* Shared Terminal Lock / Switch Staff */}
+              {isSharedTerminal && (
+                <button
+                  type="button"
+                  onClick={lockTerminalStaff}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold transition shadow-xs"
+                  title="Lock register and switch staff PIN"
+                >
+                  <Lock className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="hidden sm:inline">Switch Staff</span>
+                  <span className="sm:hidden">Lock</span>
+                </button>
+              )}
 
-          <CurrencyToggle />
+              <CurrencyToggle />
+            </>
+          )}
           <NotificationBell />
           <ConnectivityBadge />
           <button

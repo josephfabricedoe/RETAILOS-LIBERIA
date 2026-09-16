@@ -6,6 +6,7 @@ const AppContext = createContext(null);
 export function AppProvider({ children }) {
   const { currentTenant, updateTenant } = useTenant();
   const [activeModule, setActiveModule] = useState('pos');
+  const [adminTab, setAdminTab] = useState('stores');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Currency configuration
@@ -90,6 +91,8 @@ export function AppProvider({ children }) {
       value={{
         activeModule,
         setActiveModule,
+        adminTab,
+        setAdminTab,
         currency,
         toggleCurrency,
         currencyMode,

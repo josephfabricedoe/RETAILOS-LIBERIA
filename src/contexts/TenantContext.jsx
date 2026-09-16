@@ -7,6 +7,9 @@ import {
   getDoc,
   getDocs,
   addDoc, 
+  deleteDoc,
+  query,
+  where,
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -224,9 +227,54 @@ export function TenantProvider({ children, currentUser }) {
     return fullRecord;
   };
 
-    const activeStoreObj = currentTenant
-      ? { ...currentTenant, name: currentTenant.businessName || currentTenant.name || 'Store', fxRate: currentTenant.exchangeRate || 198 }
-      : { businessId: 'default', id: 'default', businessName: 'RetailOS Store', name: 'RetailOS Store', fxRate: 198, exchangeRate: 198, primaryCurrency: 'USD', secondaryCurrency: 'LRD' };
+  // Permanently delete a tenant business and its staff records
+  const deleteTenant = async (businessId) => {
+    if (!businessId) return;
+    try {
+      // 1. Delete from Firestore businesses collection
+      await deleteDoc(doc(db, 'businesses', businessId));
+
+      // 2. Delete all users belonging to this businessId
+      const uSnap = await getDocs(query(collection(db, 'users'), where('businessId', '==', businessId)));
+      for (const uDoc of uSnap.docs) {
+        await deleteDoc(uDoc.ref);
+      }
+    } catch (e) {
+      console.warn('Firestore deleteTenant notice:', e);
+    }
+
+    // 3. Clean up localStorage
+    try {
+      const existing = getLocalTenants();
+      const updated = existing.filter(t => (t.businessId || t.id) !== businessId);
+      localStorage.setItem('retailos_local_tenants', JSON.stringify(updated));
+
+      const existingAccs = JSON.parse(localStorage.getItem('retailos_platform_accounts') || '[]');
+      const filteredAccs = existingAccs.filter(a => a.businessId !== businessId);
+      localStorage.setItem('retailos_platform_accounts', JSON.stringify(filteredAccs));
+
+      if (localStorage.getItem('retailos_active_tenant_id') === businessId) {
+        localStorage.removeItem('retailos_active_tenant_id');
+      }
+    } catch (e) {}
+
+    // 4. Update memory state
+    setAllTenants(prev => prev.filter(t => (t.businessId || t.id) !== businessId));
+    if ((currentTenant?.businessId || currentTenant?.id || currentTenantId) === businessId) {
+      const remaining = allTenants.filter(t => (t.businessId || t.id) !== businessId);
+      if (remaining.length > 0) {
+        setCurrentTenant(remaining[0]);
+        setCurrentTenantId(remaining[0].businessId || remaining[0].id);
+      } else {
+        setCurrentTenant(null);
+        setCurrentTenantId(null);
+      }
+    }
+  };
+
+  const activeStoreObj = currentTenant
+    ? { ...currentTenant, name: currentTenant.businessName || currentTenant.name || 'Store', fxRate: currentTenant.exchangeRate || 198 }
+    : { businessId: 'default', id: 'default', businessName: 'RetailOS Store', name: 'RetailOS Store', fxRate: 198, exchangeRate: 198, primaryCurrency: 'USD', secondaryCurrency: 'LRD' };
 
   return (
     <TenantContext.Provider value={{
@@ -242,6 +290,7 @@ export function TenantProvider({ children, currentUser }) {
       updateTenant,
       updateTenantById,
       createTenant,
+      deleteTenant,
       getTenantCol,
       getTenantDoc,
     }}>
