@@ -242,7 +242,7 @@ export default function Shell({ onGoToCatalog, onGoToLanding, onSignOut }) {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto pb-20 md:pb-4 bg-slate-100/70 text-slate-900">
-          {(userRole === 'owner' || isSuper) && <LaunchpadChecklist />}
+          {activeModule !== 'superadmin' && (userRole === 'owner' || isSuper) && <LaunchpadChecklist />}
           {!isRoleAllowed ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
               <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">

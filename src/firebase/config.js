@@ -18,24 +18,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Safe cleanup of legacy corrupted firestore IndexedDB databases if any exist in browser
-if (typeof window !== 'undefined' && 'indexedDB' in window) {
-  try {
-    if (window.indexedDB && typeof window.indexedDB.databases === 'function') {
-      window.indexedDB.databases().then((dbs) => {
-        dbs.forEach((dbInfo) => {
-          if (dbInfo && dbInfo.name && (dbInfo.name.includes('firestore') || dbInfo.name.includes('firebase'))) {
-            try { window.indexedDB.deleteDatabase(dbInfo.name); } catch (e) {}
-          }
-        });
-      }).catch(() => {});
-    }
-  } catch (e) {}
-}
-
-// Initialize Firestore with resilient memoryLocalCache to eliminate multi-tab IndexedDB lock assertion crashes
+// Initialize Firestore with resilient memoryLocalCache and auto-detect long-polling
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
+  experimentalAutoDetectLongPolling: true,
 });
 
 export default app;

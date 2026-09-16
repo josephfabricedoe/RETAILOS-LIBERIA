@@ -57,6 +57,13 @@ export default function SuperAdminDashboard({ onEnterStore }) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedAdminLink, setCopiedAdminLink] = useState(false);
 
+  // Toast Notification State
+  const [toastMessage, setToastMessage] = useState('');
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3500);
+  };
+
   // Incoming Leads from public website
   const [leads, setLeads] = useState(() => {
     try {
@@ -66,27 +73,53 @@ export default function SuperAdminDashboard({ onEnterStore }) {
     }
   });
 
-  // Subscribe to live leads from Firestore with offline cache fallback
+  // Subscribe to live leads from Firestore with direct fetch & offline cache fallback
   useEffect(() => {
+    let mounted = true;
+
+    // 1. Direct one-shot initial fetch
+    const fetchDirectLeads = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'leads'));
+        if (!snap.empty && mounted) {
+          const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          fetched.sort((a, b) => {
+            const dateA = new Date(a.createdAt || (a.serverCreatedAt?.seconds ? a.serverCreatedAt.seconds * 1000 : 0));
+            const dateB = new Date(b.createdAt || (b.serverCreatedAt?.seconds ? b.serverCreatedAt.seconds * 1000 : 0));
+            return dateB - dateA;
+          });
+          setLeads(fetched);
+          try {
+            localStorage.setItem('retailos_local_leads', JSON.stringify(fetched));
+          } catch (e) {}
+        }
+      } catch (e) {
+        console.warn('Direct leads fetch note:', e);
+      }
+    };
+    fetchDirectLeads();
+
+    // 2. Real-time subscription
     let unsub = () => {};
     try {
       unsub = onSnapshot(
         collection(db, 'leads'),
         (snap) => {
+          if (!mounted) return;
           const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
           
-          // Merge with any local cache leads so none are lost
           let merged = [...fetched];
           try {
             const local = JSON.parse(localStorage.getItem('retailos_local_leads') || '[]');
             for (const item of local) {
               if (!merged.some(m => m.id === item.id || (m.businessName === item.businessName && m.phone === item.phone))) {
                 merged.push(item);
+                // Auto-sync local lead to Firestore
+                setDoc(doc(db, 'leads', item.id), item, { merge: true }).catch(() => {});
               }
             }
           } catch (e) {}
 
-          // Sort descending by creation date (newest first)
           merged.sort((a, b) => {
             const dateA = new Date(a.createdAt || (a.serverCreatedAt?.seconds ? a.serverCreatedAt.seconds * 1000 : 0));
             const dateB = new Date(b.createdAt || (b.serverCreatedAt?.seconds ? b.serverCreatedAt.seconds * 1000 : 0));
@@ -105,7 +138,11 @@ export default function SuperAdminDashboard({ onEnterStore }) {
     } catch (e) {
       console.warn('Leads snapshot setup warning:', e);
     }
-    return () => unsub();
+
+    return () => {
+      mounted = false;
+      unsub();
+    };
   }, []);
 
   const pendingLeadsCount = leads.filter((l) => l.status !== 'onboarded').length;
@@ -151,11 +188,13 @@ export default function SuperAdminDashboard({ onEnterStore }) {
     const newStatus = tenant.subscriptionStatus === 'active' ? 'suspended' : 'active';
     const bizId = tenant.businessId || tenant.id;
     await updateTenantById(bizId, { subscriptionStatus: newStatus });
+    showToast(`${tenant.businessName} is now ${newStatus.toUpperCase()}!`);
   };
 
   const handleUpdatePlan = async (tenant, newPlan) => {
     const bizId = tenant.businessId || tenant.id;
     await updateTenantById(bizId, { subscriptionPlan: newPlan });
+    showToast(`Updated ${tenant.businessName} to ${newPlan.toUpperCase()} Plan!`);
   };
 
   const handleConfirmDeleteStore = async () => {
@@ -225,19 +264,48 @@ export default function SuperAdminDashboard({ onEnterStore }) {
     }
   };
 
-  const handleCopyDirectLoginLink = () => {
+  const handleCopyDirectLoginLink = (userEmail = '') => {
     const origin = window.location.origin;
     const url = `${origin}/app`;
-    navigator.clipboard.writeText(url);
-    setCopiedLink('direct');
+    try {
+      if (navigator?.clipboard?.writeText) {
+        navigator.clipboard.writeText(url);
+      } else {
+        throw new Error('Clipboard API unavailable');
+      }
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    const key = userEmail || 'direct';
+    setCopiedLink(key);
+    showToast(`Copied Store App Link (${url}) to clipboard!`);
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
   const handleCopyAdminLink = () => {
     const origin = window.location.origin;
     const url = `${origin}/admin`;
-    navigator.clipboard.writeText(url);
+    try {
+      if (navigator?.clipboard?.writeText) {
+        navigator.clipboard.writeText(url);
+      } else {
+        throw new Error('Clipboard API unavailable');
+      }
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
     setCopiedAdminLink(true);
+    showToast(`Copied Super-Admin Portal Link (${url}) to clipboard!`);
     setTimeout(() => setCopiedAdminLink(false), 2500);
   };
 
@@ -257,7 +325,15 @@ export default function SuperAdminDashboard({ onEnterStore }) {
   };
 
   return (
-    <div className="min-h-full bg-slate-900 text-slate-100 p-4 sm:p-6 space-y-6">
+    <div className="min-h-full bg-slate-900 text-slate-100 p-4 sm:p-6 space-y-6 relative">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-6 right-6 z-50 bg-emerald-600 border border-emerald-400 text-white font-black text-xs px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 animate-in fade-in slide-in-from-top-4">
+          <CheckCircle2 className="w-5 h-5 text-white shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* Top Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-850 p-6 rounded-3xl border border-slate-700 shadow-xl">
         <div className="space-y-1">

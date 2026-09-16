@@ -55,34 +55,71 @@ export function TenantProvider({ children, currentUser }) {
 
   const isSuperAdmin = currentUser ? isSuperAdminEmail(currentUser.email) : false;
 
-  // Listen to genuine businesses in real-time
+  // Listen to genuine businesses in real-time with direct fetch & auto-sync
   useEffect(() => {
     let mounted = true;
+
+    // Direct initial fetch
+    const fetchDirect = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'businesses'));
+        if (!snap.empty && mounted) {
+          const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const locals = getLocalTenants();
+          
+          const mergedMap = new Map();
+          locals.forEach(item => mergedMap.set(item.businessId || item.id, item));
+          list.forEach(item => mergedMap.set(item.businessId || item.id, { ...(mergedMap.get(item.businessId || item.id) || {}), ...item }));
+          const unique = Array.from(mergedMap.values());
+          setAllTenants(unique);
+
+          // Auto-sync any local-only store (like PMET) to Cloud Firestore
+          locals.forEach(async (localStore) => {
+            const sid = localStore.businessId || localStore.id;
+            if (sid && !list.some(d => (d.businessId || d.id) === sid)) {
+              try {
+                await setDoc(doc(db, 'businesses', sid), localStore, { merge: true });
+              } catch (e) {}
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Initial direct businesses fetch notice:', e);
+      }
+    };
+    fetchDirect();
+
     const unsub = onSnapshot(
       collection(db, 'businesses'),
       async (snap) => {
         if (!mounted) return;
-        if (!snap.empty) {
-          const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          const locals = getLocalTenants();
-          const merged = [...list, ...locals];
-          const unique = Array.from(new Map(merged.map(item => [item.businessId || item.id, item])).values());
-          setAllTenants(unique);
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const locals = getLocalTenants();
+        
+        const mergedMap = new Map();
+        locals.forEach(item => mergedMap.set(item.businessId || item.id, item));
+        list.forEach(item => mergedMap.set(item.businessId || item.id, { ...(mergedMap.get(item.businessId || item.id) || {}), ...item }));
+        const unique = Array.from(mergedMap.values());
 
-          // Find match by businessId or slug or default
-          const found = unique.find(b => b.businessId === currentTenantId || b.slug === currentTenantId || b.id === currentTenantId);
-          if (found) {
-            setCurrentTenant(found);
-          } else if (unique.length > 0) {
-            setCurrentTenant(unique[0]);
-            setCurrentTenantId(unique[0].businessId || unique[0].id);
+        setAllTenants(unique);
+
+        // Auto-sync local stores to Cloud Firestore
+        locals.forEach(async (localStore) => {
+          const sid = localStore.businessId || localStore.id;
+          if (sid && !list.some(d => (d.businessId || d.id) === sid)) {
+            try {
+              await setDoc(doc(db, 'businesses', sid), localStore, { merge: true });
+            } catch (e) {}
           }
-        } else {
-          const locals = getLocalTenants();
-          setAllTenants(locals);
-          if (locals.length > 0) {
-            setCurrentTenant(locals[0]);
-          }
+        });
+
+        // Find match by businessId or slug or default
+        const found = unique.find(b => b.businessId === currentTenantId || b.slug === currentTenantId || b.id === currentTenantId);
+        if (found) {
+          setCurrentTenant(found);
+        } else if (unique.length > 0) {
+          setCurrentTenant(unique[0]);
+          setCurrentTenantId(unique[0].businessId || unique[0].id);
         }
         setLoadingTenants(false);
       },
@@ -172,12 +209,37 @@ export function TenantProvider({ children, currentUser }) {
   // Update specific tenant configuration (for Super Admin dashboard)
   const updateTenantById = async (targetBizId, fields) => {
     if (!targetBizId) return;
-    await setDoc(doc(db, 'businesses', targetBizId), {
-      ...fields,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
-    if ((currentTenant?.businessId || currentTenantId) === targetBizId) {
-      setCurrentTenant(prev => ({ ...prev, ...fields }));
+
+    // 1. Instantly update allTenants in memory so UI changes on the spot
+    setAllTenants(prev => prev.map(t => {
+      const match = (t.businessId === targetBizId || t.id === targetBizId || t.slug === targetBizId);
+      return match ? { ...t, ...fields } : t;
+    }));
+
+    // 2. Instantly update currentTenant if matching
+    setCurrentTenant(prev => {
+      const match = (prev?.businessId === targetBizId || prev?.id === targetBizId || prev?.slug === targetBizId);
+      return match ? { ...prev, ...fields } : prev;
+    });
+
+    // 3. Update localStorage cache
+    try {
+      const locals = getLocalTenants();
+      const updated = locals.map(t => {
+        const match = (t.businessId === targetBizId || t.id === targetBizId || t.slug === targetBizId);
+        return match ? { ...t, ...fields } : t;
+      });
+      localStorage.setItem('retailos_local_tenants', JSON.stringify(updated));
+    } catch (e) {}
+
+    // 4. Save to Firestore in cloud
+    try {
+      await setDoc(doc(db, 'businesses', targetBizId), {
+        ...fields,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (err) {
+      console.warn('Firestore updateTenantById error:', err);
     }
   };
 
