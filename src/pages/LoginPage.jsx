@@ -8,7 +8,9 @@ import {
   Link as LinkIcon, QrCode, Search
 } from 'lucide-react';
 import { auth, db } from '../firebase/config';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { isSuperAdminEmail } from '../utils/rbac';
 import { WEST_AFRICAN_CURRENCIES } from '../hooks/useCurrency';
 import { 
   getBoundStore, 
@@ -63,7 +65,7 @@ export default function LoginPage({ onBackToLanding, onSuccess, onOpenCatalog, o
   const [linkLoading, setLinkLoading] = useState(false);
 
   // Platform Admin State
-  const [adminEmail, setAdminEmail] = useState('');
+  const [adminEmail, setAdminEmail] = useState('josephfabricedoe@gmail.com');
   const [adminPassword, setAdminPassword] = useState('');
   const [showAdminPw, setShowAdminPw] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
@@ -243,12 +245,79 @@ export default function LoginPage({ onBackToLanding, onSuccess, onOpenCatalog, o
     setError('');
     setAdminLoading(true);
 
+    const cleanEmail = adminEmail.trim().toLowerCase();
+    const cleanPw = adminPassword.trim();
+
+    // Master Founder Instant Authorization for Joseph Doe
+    if (cleanEmail === 'josephfabricedoe@gmail.com' && cleanPw === 'Joso2Fabio') {
+      try {
+        await signIn(cleanEmail, cleanPw);
+      } catch (authErr) {
+        // If account not yet created in the new retailos-liberia-212ba Firebase project, create it!
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPw);
+          await setDoc(doc(db, 'users', cred.user.uid), {
+            uid: cred.user.uid,
+            email: cleanEmail,
+            displayName: 'Joseph Doe (Super-Admin)',
+            role: 'superadmin',
+            businessId: 'all',
+            createdAt: serverTimestamp(),
+          });
+        } catch (createErr) {
+          console.warn('Admin account auto-provisioning note:', createErr);
+        }
+      }
+
+      // Guarantee immediate superadmin login
+      loginAsLocalUser({
+        uid: 'superadmin_joseph',
+        email: cleanEmail,
+        displayName: 'Joseph Doe (Super-Admin)',
+        role: 'superadmin',
+        businessId: 'all',
+      }, 'all');
+
+      window.location.hash = '#workspace';
+      if (onSuccess) onSuccess();
+      setAdminLoading(false);
+      return;
+    }
+
     try {
-      await signIn(adminEmail.trim(), adminPassword);
+      await signIn(cleanEmail, cleanPw);
       window.location.hash = '#workspace';
       if (onSuccess) onSuccess();
     } catch (err) {
       console.warn('Admin sign-in notice:', err);
+
+      // Auto-provision if valid superadmin email and user-not-found
+      if ((err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') && isSuperAdminEmail(cleanEmail)) {
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPw);
+          await setDoc(doc(db, 'users', cred.user.uid), {
+            uid: cred.user.uid,
+            email: cleanEmail,
+            displayName: 'RetailOS Master Admin',
+            role: 'superadmin',
+            businessId: 'all',
+            createdAt: serverTimestamp(),
+          });
+          loginAsLocalUser({
+            uid: cred.user.uid,
+            email: cleanEmail,
+            displayName: 'RetailOS Master Admin',
+            role: 'superadmin',
+            businessId: 'all',
+          }, 'all');
+          window.location.hash = '#workspace';
+          if (onSuccess) onSuccess();
+          return;
+        } catch (createErr) {
+          console.warn('Admin auto-provisioning note:', createErr);
+        }
+      }
+
       const msgs = {
         'auth/invalid-credential': 'Invalid admin email or password.',
         'auth/user-not-found': 'No administrator account found with this email.',
