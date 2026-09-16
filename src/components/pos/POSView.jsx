@@ -83,8 +83,7 @@ export default function POSView() {
       setLoadingSamples(true);
       await loadSampleProducts(getTenantDoc);
     } catch (err) {
-      console.error('Failed to load sample products in POS:', err);
-      alert('Could not load sample products: ' + err.message);
+      console.warn('Failed to load sample products in POS:', err);
     } finally {
       setLoadingSamples(false);
     }

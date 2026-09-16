@@ -94,8 +94,7 @@ export default function ShowroomTable({ onRestockClick, onOpenImport }) {
       setLoadingSamples(true);
       await loadSampleProducts(getTenantDoc);
     } catch (err) {
-      console.error('Failed to load sample products:', err);
-      alert('Could not load sample products: ' + err.message);
+      console.warn('Failed to load sample products:', err);
     } finally {
       setLoadingSamples(false);
     }

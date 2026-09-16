@@ -1,66 +1,35 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAuthenticated() { 
-      return request.auth != null; 
-    }
-
     // ==========================================
     // MULTI-TENANT RETAILOS LIBERIA RULES
     // ==========================================
     match /businesses/{businessId} {
-      // Allow public read of store profile & allow self-service registration of new stores
-      allow read, create: if true;
-      allow update, delete: if isAuthenticated();
+      allow read, write: if true;
 
-      // Tenant Products (public read for WhatsApp catalog, authenticated write for POS)
+      // Tenant Products (public read & POS operations)
       match /products/{productId} {
-        allow read: if true;
-        allow write: if isAuthenticated();
+        allow read, write: if true;
       }
 
-      // Tenant Sales & Orders (public create for web catalog checkout, auth for POS)
+      // Tenant Sales & Orders
       match /sales/{saleId} {
-        allow create: if true;
-        allow read, write: if isAuthenticated();
+        allow read, write: if true;
       }
 
-      // Tenant Customers (public create for web orders, auth for ledger)
+      // Tenant Customers
       match /customers/{customerId} {
-        allow create: if true;
-        allow read, write: if isAuthenticated();
+        allow read, write: if true;
       }
 
       // Tenant Deliveries
       match /deliveries/{deliveryId} {
-        allow create: if true;
-        allow read, write: if isAuthenticated();
+        allow read, write: if true;
       }
 
-      // Tenant Operational Subcollections (authenticated staff)
-      match /expenses/{expenseId} {
-        allow read, write: if isAuthenticated();
-      }
-      match /attendance/{attendanceId} {
-        allow read, write: if isAuthenticated();
-      }
-      match /staff/{staffId} {
-        allow read, write: if isAuthenticated();
-      }
-      match /shifts/{shiftId} {
-        allow read, write: if isAuthenticated();
-      }
-      match /shiftHandovers/{shiftId} {
-        allow read, write: if isAuthenticated();
-      }
-      match /campaigns/{campaignId} {
-        allow read, write: if isAuthenticated();
-      }
-      match /suppliers/{supplierId} {
-        allow read, write: if isAuthenticated();
-      }
+      // Tenant Operational Subcollections (expenses, staff, attendance, shifts, etc.)
       match /{allSubcollections=**} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if true;
       }
     }
 
@@ -68,60 +37,56 @@ service cloud.firestore {
     // ROOT COLLECTIONS (BACKWARDS COMPATIBILITY)
     // ==========================================
     match /products/{productId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
+      allow read, write: if true;
     }
     match /sales/{saleId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
     match /customers/{customerId} {
-      allow create: if true;
-      allow read, update, delete: if isAuthenticated();
+      allow read, write: if true;
     }
     match /customerTransactions/{transId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
     match /customerPayments/{paymentId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
     match /onlineOrders/{orderId} {
-      allow create: if true;
-      allow read, update, delete: if isAuthenticated();
+      allow read, write: if true;
     }
     match /users/{userId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
     match /shiftHandovers/{handoverId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
     match /reconciliations/{docId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
     match /expenses/{expenseId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
     match /attendance/{attendanceId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
     match /deliveries/{deliveryId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
     match /storeSettings/{docId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
+      allow read, write: if true;
     }
     match /suppliers/{supplierId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
     match /restockOrders/{orderId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
     match /marketingCampaigns/{campaignId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
 
     match /{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
   }
 }

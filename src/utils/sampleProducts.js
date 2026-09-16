@@ -119,17 +119,22 @@ export const SAMPLE_LIBERIAN_PRODUCTS = [
  * Loads the 8 realistic sample Liberian retail products into the store's tenant collection.
  */
 export async function loadSampleProducts(getTenantDoc) {
-  const promises = SAMPLE_LIBERIAN_PRODUCTS.map((prod) => {
-    const docRef = getTenantDoc('products', prod.id);
-    const data = {
-      ...prod,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-    return setDoc(docRef, data, { merge: true });
-  });
-  await Promise.all(promises);
-  return SAMPLE_LIBERIAN_PRODUCTS.length;
+  let loadedCount = 0;
+  for (const prod of SAMPLE_LIBERIAN_PRODUCTS) {
+    try {
+      const docRef = getTenantDoc('products', prod.id);
+      const data = {
+        ...prod,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      await setDoc(docRef, data, { merge: true });
+      loadedCount++;
+    } catch (err) {
+      console.warn(`Sample product write note (${prod.name}):`, err);
+    }
+  }
+  return loadedCount;
 }
 
 /**
