@@ -170,7 +170,10 @@ export function AuthProvider({ children }) {
     try {
       localStorage.removeItem('retailos_role_override');
       localStorage.removeItem('retailos_local_user');
+      localStorage.removeItem('retailos_active_tenant_id');
+      sessionStorage.clear();
     } catch (e) {}
+    window.location.hash = '#login';
     return fbSignOut(auth).catch(() => {});
   };
 

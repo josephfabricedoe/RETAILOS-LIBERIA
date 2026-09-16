@@ -10,6 +10,7 @@ import ReceiptModal from './ReceiptModal';
 import ReceiptsHistoryModal from './ReceiptsHistoryModal';
 import { getPriceForMode } from './PricingModeSwitcher';
 import { loadSampleProducts } from '../../utils/sampleProducts';
+import { savePendingSale, syncPendingSales } from '../../utils/offlineSales';
 import { 
   PackageOpen, 
   AlertCircle, 
@@ -116,6 +117,13 @@ export default function POSView() {
       console.warn('Customers sync notice:', e);
     }
   }, [tenantId]);
+
+  // Auto-sync any queued offline sales when online
+  useEffect(() => {
+    if (isOnline && tenantId) {
+      syncPendingSales(tenantId, getTenantCol, getTenantDoc).catch(() => {});
+    }
+  }, [isOnline, tenantId]);
 
   // Search products by name or barcode
   const handleSearch = (queryStr) => {
@@ -249,19 +257,12 @@ export default function POSView() {
       } else if (newCustomerName.trim()) {
         custName = newCustomerName.trim();
         custPhone = newCustomerPhone.trim();
-        // Create new customer record under tenant
-        const newCustDoc = await addDoc(getTenantCol('customers'), {
-          name: custName,
-          phone: custPhone,
-          totalPurchases: cartFinalTotal,
-          currentDebt: balanceOwed,
-          createdAt: serverTimestamp(),
-        });
-        customerRefId = newCustDoc.id;
+        customerRefId = `cust_${Date.now()}`;
       }
 
       const receiptNo = `R${Date.now().toString().slice(-6)}`;
       const cashierName = userProfile?.displayName || userProfile?.email?.split('@')[0] || 'Cashier';
+      const saleId = `sale_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
       const salePayload = {
         receiptNo,
@@ -286,39 +287,25 @@ export default function POSView() {
         customerPhone: custPhone,
         cashierName,
         cashierId: currentUser?.uid || 'kiosk',
-        timestamp: serverTimestamp(),
+        timestamp: new Date().toISOString(),
         date: new Date().toLocaleDateString('en-US'),
       };
 
-      // 1. Write sale document to tenant's sales collection
-      const saleDocRef = await addDoc(getTenantCol('sales'), salePayload);
+      const completed = { id: saleId, ...salePayload };
 
-      // 2. Decrement showroom stock for each product in tenant inventory
-      for (const it of cartItems) {
-        if (it.product?.id) {
-          try {
-            await updateDoc(getTenantDoc('products', it.product.id), {
-              showroomQty: increment(-it.quantity),
-            });
-          } catch (stkErr) {
-            console.warn('Stock decrement warning:', stkErr);
-          }
+      // 1. Immediately store to local offline queue so the sale is 100% saved
+      savePendingSale(tenantId, completed);
+
+      // 2. Decrement showroom quantities in local UI state optimistically
+      setAllProducts(prev => prev.map(p => {
+        const match = cartItems.find(it => it.product?.id === p.id);
+        if (match) {
+          return { ...p, showroomQty: Math.max(0, (p.showroomQty || 0) - match.quantity) };
         }
-      }
+        return p;
+      }));
 
-      // 3. Update customer balance if debt/credit
-      if (customerRefId && balanceOwed > 0) {
-        try {
-          await updateDoc(getTenantDoc('customers', customerRefId), {
-            currentDebt: increment(balanceOwed),
-            totalPurchases: increment(cartFinalTotal),
-          });
-        } catch (cErr) {
-          console.warn('Customer debt update notice:', cErr);
-        }
-      }
-
-      const completed = { id: saleDocRef.id, ...salePayload };
+      // 3. Immediately complete the checkout in UI without waiting on network
       setCompletedSale(completed);
       setCartItems([]);
       setCheckoutModal(false);
@@ -328,10 +315,15 @@ export default function POSView() {
       setNewCustomerName('');
       setNewCustomerPhone('');
       setReceiptOpen(true);
+      setProcessing(false);
+
+      // 4. Fire background cloud sync asynchronously
+      syncPendingSales(tenantId, getTenantCol, getTenantDoc).catch(err => {
+        console.warn('Background sync status:', err);
+      });
     } catch (err) {
       console.error('Checkout error:', err);
       alert('Failed to record sale: ' + err.message);
-    } finally {
       setProcessing(false);
     }
   };

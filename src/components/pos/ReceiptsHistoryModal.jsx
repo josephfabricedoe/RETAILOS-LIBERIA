@@ -17,6 +17,8 @@ import {
   Package,
 } from 'lucide-react';
 
+import { getPendingSales } from '../../utils/offlineSales';
+
 export default function ReceiptsHistoryModal({ isOpen, onClose, initialFilter = 'all' }) {
   const { format } = useCurrency();
   const { getTenantCol, tenantId } = useTenant();
@@ -32,6 +34,8 @@ export default function ReceiptsHistoryModal({ isOpen, onClose, initialFilter = 
     setFilterTab(initialFilter);
     setLoading(true);
 
+    const offlineList = getPendingSales(tenantId);
+
     try {
       const q = query(getTenantCol('sales'), orderBy('timestamp', 'desc'));
       const unsub = onSnapshot(
@@ -41,7 +45,9 @@ export default function ReceiptsHistoryModal({ isOpen, onClose, initialFilter = 
             id: d.id,
             ...d.data(),
           }));
-          setSales(list);
+          const existingIds = new Set(list.map(s => s.id));
+          const unmergedOffline = offlineList.filter(s => !existingIds.has(s.id));
+          setSales([...unmergedOffline, ...list]);
           setLoading(false);
         },
         (err) => {
@@ -51,12 +57,15 @@ export default function ReceiptsHistoryModal({ isOpen, onClose, initialFilter = 
             fallbackQ,
             (snap) => {
               const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-              list.sort((a, b) => {
-                const ta = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
-                const tb = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
+              const existingIds = new Set(list.map(s => s.id));
+              const unmergedOffline = offlineList.filter(s => !existingIds.has(s.id));
+              const combined = [...unmergedOffline, ...list];
+              combined.sort((a, b) => {
+                const ta = a.timestamp?.toMillis ? a.timestamp.toMillis() : (a.queuedAt || 0);
+                const tb = b.timestamp?.toMillis ? b.timestamp.toMillis() : (b.queuedAt || 0);
                 return tb - ta;
               });
-              setSales(list);
+              setSales(combined);
               setLoading(false);
             }
           );

@@ -64,10 +64,19 @@ function NavButton({ id, label, icon: Icon, active, isOpen, onClick, highlight =
   );
 }
 
-export default function Sidebar() {
+export default function Sidebar({ onSignOut }) {
   const { activeModule, setActiveModule, isSidebarOpen, toggleSidebar } = useApp();
   const { userProfile, signOut, isSharedTerminal, lockTerminalStaff, isSuperAdmin, currentUser, setRole } = useAuth();
   const { currentTenant } = useTenant();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (e) {
+      console.warn('Sign out warning:', e);
+    }
+    if (onSignOut) onSignOut();
+  };
 
   const role = normalizeRole(userProfile?.role, currentUser?.email);
   const roleDef = ROLE_DEFINITIONS[role] || ROLE_DEFINITIONS.cashier;
@@ -213,7 +222,7 @@ export default function Sidebar() {
 
         {/* Sign Out */}
         <button
-          onClick={signOut}
+          onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs text-slate-600 hover:text-rose-600 hover:bg-rose-50 font-medium transition-colors"
         >
           <LogOut className="w-4 h-4 flex-shrink-0" />

@@ -56,12 +56,17 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  // When user logs in, route them straight into workspace
+  // Synchronize view with authentication state
   useEffect(() => {
     if (currentUser && currentView !== 'catalog') {
       setCurrentView('workspace');
+    } else if (!currentUser && currentView === 'workspace') {
+      setCurrentView('login');
+      if (window.location.hash !== '#landing' && window.location.hash !== '#login') {
+        window.location.hash = '#login';
+      }
     }
-  }, [currentUser]);
+  }, [currentUser, currentView]);
 
   // Non-blocking auth resolution: Only display fullscreen initializing spinner if entering workspace/login
   if (authLoading && (currentView === 'workspace' || currentView === 'login')) {
@@ -122,8 +127,8 @@ export default function App() {
     );
   }
 
-  // 3. White-Label Staff & Owner Login Page
-  if (currentView === 'login' && !currentUser) {
+  // 3. White-Label Staff & Owner Login Page (or any unauthenticated state)
+  if (!currentUser) {
     return (
       <ErrorBoundary>
         <PwaInstallPrompt />
@@ -154,6 +159,10 @@ export default function App() {
           onGoToLanding={() => {
             window.location.hash = '#landing';
             setCurrentView('landing');
+          }}
+          onSignOut={() => {
+            window.location.hash = '#login';
+            setCurrentView('login');
           }}
         />
       </Suspense>

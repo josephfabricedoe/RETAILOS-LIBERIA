@@ -94,7 +94,7 @@ const ALL_MOBILE_MODULES = [
   { id: 'superadmin', label: 'Platform Super-Admin',    icon: Sparkles },
 ];
 
-export default function Shell({ onGoToCatalog, onGoToLanding }) {
+export default function Shell({ onGoToCatalog, onGoToLanding, onSignOut }) {
   const { activeModule, setActiveModule } = useApp();
   const { 
     userProfile, 
@@ -108,6 +108,16 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
   } = useAuth();
   const { currentTenant, switchTenant } = useTenant();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (e) {
+      console.warn('Signout warning:', e);
+    }
+    if (onSignOut) onSignOut();
+    else if (onGoToLanding) onGoToLanding();
+  };
 
   const userRole = normalizeRole(userProfile?.role, currentUser?.email);
   const roleDef = ROLE_DEFINITIONS[userRole] || ROLE_DEFINITIONS.cashier;
@@ -137,7 +147,7 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden selection:bg-emerald-500 selection:text-white text-slate-900 font-sans">
-      <Sidebar />
+      <Sidebar onSignOut={handleSignOut} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Super-Admin Impersonation Banner */}
         {isSuperAdmin && activeModule !== 'superadmin' && (
@@ -232,7 +242,7 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
           <NotificationBell />
           <ConnectivityBadge />
           <button
-            onClick={signOut}
+            onClick={handleSignOut}
             className="md:hidden p-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition"
           >
             <LogOut className="w-4 h-4" />
@@ -344,7 +354,7 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
                 Signed in as: <span className="text-slate-900 font-bold">{isSuperAdmin ? 'RetailOS Master Admin' : (userProfile?.displayName || userProfile?.email)}</span>
               </div>
               <button
-                onClick={signOut}
+                onClick={handleSignOut}
                 className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors"
               >
                 <LogOut className="w-4 h-4" />
