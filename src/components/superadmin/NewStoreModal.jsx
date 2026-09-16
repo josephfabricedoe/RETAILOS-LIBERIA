@@ -229,14 +229,14 @@ export default function NewStoreModal({ onClose, onCreated, prefillLead = null }
   const [copiedLinkOnly, setCopiedLinkOnly] = useState(false);
 
   const getDirectLink = () => {
-    if (!createdSummary) return 'https://liberiaretailos.online/#login';
-    return `https://liberiaretailos.online/#login?email=${encodeURIComponent(createdSummary.owner.email)}`;
+    if (!createdSummary) return 'https://liberiaretailos.online/app';
+    return `https://liberiaretailos.online/app?email=${encodeURIComponent(createdSummary.owner.email)}`;
   };
 
   const getWhatsAppMessage = () => {
     if (!createdSummary) return '';
     const { store, owner, cashiers } = createdSummary;
-    const directLink = `https://liberiaretailos.online/#login?email=${encodeURIComponent(owner.email)}`;
+    const directLink = `https://liberiaretailos.online/app?email=${encodeURIComponent(owner.email)}`;
 
     let msg = `*Welcome to RetailOS Liberia! 🇱🇷*\n\n`;
     msg += `Your store workspace for *${store.businessName}* has been set up and is live!\n\n`;

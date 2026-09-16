@@ -29,11 +29,18 @@ function withTimeout(promise, timeoutMs = 3500) {
   ]);
 }
 
-export default function LoginPage({ onBackToLanding, onSuccess, onGoToLanding }) {
+export default function LoginPage({ onBackToLanding, onSuccess, onGoToLanding, onGoToAdmin }) {
   const { signIn, loginAsLocalUser } = useAuth();
   const { switchTenant } = useTenant();
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      return p.get('email') || '';
+    } catch (e) {
+      return '';
+    }
+  });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -272,7 +279,7 @@ export default function LoginPage({ onBackToLanding, onSuccess, onGoToLanding })
           </div>
 
           {/* Registration Notice */}
-          <div className="text-center pt-1">
+          <div className="text-center pt-1 space-y-2">
             <p className="text-xs text-slate-500">
               Need a store account?{' '}
               <button
@@ -284,6 +291,21 @@ export default function LoginPage({ onBackToLanding, onSuccess, onGoToLanding })
                 className="text-emerald-600 hover:text-emerald-700 font-bold hover:underline"
               >
                 Register your business
+              </button>
+            </p>
+            <p className="text-[11px] text-slate-400">
+              Platform Administrator?{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  if (onGoToAdmin) onGoToAdmin();
+                  else {
+                    window.location.hash = '#admin';
+                  }
+                }}
+                className="text-slate-600 hover:text-slate-900 font-semibold hover:underline"
+              >
+                Sign In to Super-Admin (/admin)
               </button>
             </p>
           </div>

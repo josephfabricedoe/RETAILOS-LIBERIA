@@ -424,7 +424,12 @@ export default function LandingPage({ onGoToLogin }) {
           <div className="text-center sm:text-left">
             <span className="text-sm font-black text-slate-900 block">RetailOS Liberia 🇱🇷</span>
             <p className="mt-1 text-slate-600 font-medium">The Independent Multi-Tenant Cloud POS & Retail OS for West Africa</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">Monrovia, Liberia · Built to empower local retail commerce</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Monrovia, Liberia · Built to empower local retail commerce ·{' '}
+              <a href="/admin" className="text-slate-400 hover:text-slate-700 hover:underline">
+                Super-Admin Portal
+              </a>
+            </p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-right">

@@ -6,6 +6,7 @@ import { useApp } from './contexts/AppContext';
 // Direct critical views
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
+import AdminLoginPage from './pages/AdminLoginPage';
 import ErrorBoundary from './components/shared/ErrorBoundary';
 import PwaInstallPrompt from './components/shared/PwaInstallPrompt';
 
@@ -27,7 +28,7 @@ export default function App() {
   const { currentTenant, switchTenant, allTenants, isSuperAdmin } = useTenant();
   const { setActiveModule } = useApp();
 
-  // Navigation State: 'landing' | 'login' | 'workspace' | 'catalog'
+  // Navigation State: 'landing' | 'login' | 'admin' | 'workspace' | 'catalog'
   const [currentView, setCurrentView] = useState(() => {
     // 1. Check direct URL pathname, hash or query params
     const pathname = window.location.pathname.toLowerCase();
@@ -36,10 +37,25 @@ export default function App() {
     const viewParam = params.get('view');
 
     if (
+      pathname === '/admin' || 
+      pathname.startsWith('/admin') || 
+      hash === '#admin' || 
+      viewParam === 'admin' || 
+      params.has('admin')
+    ) {
+      return 'admin';
+    }
+
+    if (
+      pathname === '/app' || 
+      pathname.startsWith('/app') || 
       pathname === '/login' || 
       pathname.startsWith('/login') || 
+      hash === '#app' || 
       hash === '#login' || 
+      viewParam === 'app' || 
       viewParam === 'login' || 
+      params.has('app') || 
       params.has('login')
     ) {
       return 'login';
@@ -58,9 +74,20 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
 
       if (
+        pathname === '/admin' || 
+        pathname.startsWith('/admin') || 
+        hash === '#admin' || 
+        params.has('admin')
+      ) {
+        setCurrentView('admin');
+      } else if (
+        pathname === '/app' || 
+        pathname.startsWith('/app') || 
         pathname === '/login' || 
         pathname.startsWith('/login') || 
+        hash === '#app' || 
         hash === '#login' || 
+        params.has('app') || 
         params.has('login')
       ) {
         setCurrentView('login');
@@ -85,13 +112,13 @@ export default function App() {
   useEffect(() => {
     if (currentUser && currentView !== 'catalog') {
       setCurrentView('workspace');
+      if (isSuperAdmin) {
+        setActiveModule('superadmin');
+      }
     } else if (!currentUser && currentView === 'workspace') {
       setCurrentView('login');
-      if (window.location.hash !== '#landing' && window.location.hash !== '#login') {
-        window.location.hash = '#login';
-      }
     }
-  }, [currentUser, currentView]);
+  }, [currentUser, isSuperAdmin]);
 
   // Non-blocking auth resolution: Never stall the user on login or catalog screens
   if (authLoading && currentView === 'workspace' && !currentUser) {
@@ -152,7 +179,31 @@ export default function App() {
     );
   }
 
-  // 3. White-Label Staff & Owner Login Page (or any unauthenticated state)
+  // 3. Super-Admin Master Portal Login (/admin)
+  if (currentView === 'admin' && !currentUser) {
+    return (
+      <ErrorBoundary>
+        <PwaInstallPrompt />
+        <AdminLoginPage
+          onBackToLanding={() => {
+            window.location.hash = '#landing';
+            setCurrentView('landing');
+          }}
+          onGoToApp={() => {
+            window.location.hash = '#app';
+            setCurrentView('login');
+          }}
+          onSuccess={() => {
+            setActiveModule('superadmin');
+            window.location.hash = '#workspace';
+            setCurrentView('workspace');
+          }}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  // 4. White-Label Staff & Owner Login Page (/app or /login or any unauthenticated state)
   if (!currentUser) {
     return (
       <ErrorBoundary>
@@ -161,6 +212,10 @@ export default function App() {
           onBackToLanding={() => {
             window.location.hash = '#landing';
             setCurrentView('landing');
+          }}
+          onGoToAdmin={() => {
+            window.location.hash = '#admin';
+            setCurrentView('admin');
           }}
           onSuccess={() => {
             window.location.hash = '#workspace';
@@ -171,7 +226,7 @@ export default function App() {
     );
   }
 
-  // 4. Authenticated Store Workspace / POS Shell
+  // 5. Authenticated Store Workspace / POS Shell
   return (
     <ErrorBoundary>
       <PwaInstallPrompt />
@@ -186,8 +241,13 @@ export default function App() {
             setCurrentView('landing');
           }}
           onSignOut={() => {
-            window.location.hash = '#login';
-            setCurrentView('login');
+            if (isSuperAdmin) {
+              window.location.hash = '#admin';
+              setCurrentView('admin');
+            } else {
+              window.location.hash = '#app';
+              setCurrentView('login');
+            }
           }}
         />
       </Suspense>

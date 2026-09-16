@@ -112,14 +112,24 @@ export default function SuperAdminDashboard({ onEnterStore }) {
 
   const [copiedLink, setCopiedLink] = useState(false);
 
+  const [copiedAdminLink, setCopiedAdminLink] = useState(false);
+
   const handleCopyDirectLoginLink = (userEmail = '') => {
     const origin = window.location.origin;
     const url = userEmail 
-      ? `${origin}/#login?email=${encodeURIComponent(userEmail)}`
-      : `${origin}/#login`;
+      ? `${origin}/app?email=${encodeURIComponent(userEmail)}`
+      : `${origin}/app`;
     navigator.clipboard.writeText(url);
     setCopiedLink(userEmail || 'direct');
     setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const handleCopyAdminLink = () => {
+    const origin = window.location.origin;
+    const url = `${origin}/admin`;
+    navigator.clipboard.writeText(url);
+    setCopiedAdminLink(true);
+    setTimeout(() => setCopiedAdminLink(false), 2500);
   };
 
   return (
@@ -140,19 +150,29 @@ export default function SuperAdminDashboard({ onEnterStore }) {
             </span>
           </h1>
           <p className="text-sm text-slate-400">
-            Platform Management: <span className="text-white font-medium">RetailOS Liberia Team</span> · Empowering retail across Liberia
+            Platform Management: <span className="text-white font-medium">Joseph Doe & RetailOS Team</span> · Empowering retail across Liberia
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* DEDICATED SIGN-IN LINK BUTTON */}
+          {/* DEDICATED STORE APP LINK BUTTON */}
           <button
             onClick={() => handleCopyDirectLoginLink()}
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 text-emerald-300 transition-all shadow-sm"
-            title="Copy dedicated direct login link for merchants"
+            title="Copy dedicated store & cashier app link (/app)"
           >
             {copiedLink === 'direct' ? <Check className="w-4 h-4 text-emerald-400" /> : <LinkIcon className="w-4 h-4 text-emerald-400" />}
-            <span>{copiedLink === 'direct' ? 'Direct Link Copied!' : 'Copy Dedicated Sign-In Link'}</span>
+            <span>{copiedLink === 'direct' ? 'Copied /app!' : 'Copy Store App Link (/app)'}</span>
+          </button>
+
+          {/* DEDICATED SUPER ADMIN LINK BUTTON */}
+          <button
+            onClick={handleCopyAdminLink}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/50 text-indigo-300 transition-all shadow-sm"
+            title="Copy super admin portal link (/admin)"
+          >
+            {copiedAdminLink ? <Check className="w-4 h-4 text-indigo-400" /> : <Sparkles className="w-4 h-4 text-indigo-400" />}
+            <span>{copiedAdminLink ? 'Copied /admin!' : 'Copy Admin Link (/admin)'}</span>
           </button>
 
           <button
