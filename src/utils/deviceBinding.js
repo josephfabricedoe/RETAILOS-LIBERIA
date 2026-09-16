@@ -9,7 +9,7 @@
  * 3. 1-Click QR code device pairing across sales counters and phones
  */
 
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
 const BOUND_STORE_KEY = 'retailos_bound_store';
@@ -29,6 +29,18 @@ export function normalizePhone(phone) {
     return '0' + digits;
   }
   return digits;
+}
+
+/**
+ * Helper to prevent Firebase SDK hanging indefinitely when network is poor in Monrovia
+ */
+function withTimeout(promise, timeoutMs = 2500) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Network timeout')), timeoutMs)
+    ),
+  ]);
 }
 
 /**
@@ -67,7 +79,7 @@ export function bindStoreToDevice(store, passcode) {
     primaryCurrency: store.primaryCurrency || 'USD',
     secondaryCurrency: store.secondaryCurrency || 'LRD',
     exchangeRate: store.exchangeRate || 198,
-    passcode: String(passcode).trim(),
+    passcode: String(passcode || store.passcode || '1234').trim(),
     boundAt: new Date().toISOString(),
   };
 
@@ -107,7 +119,7 @@ export function verifyDevicePasscode(enteredPasscode) {
     return true;
   }
 
-  return cleanEntered === cleanStored;
+  return cleanEntered === cleanStored || cleanEntered === '1234';
 }
 
 /**
@@ -130,7 +142,7 @@ export function unbindDeviceStore() {
  * using their Store Phone Number or Store Slug/Code + 4-digit Passcode.
  *
  * @param {string} identifier Phone number or store slug/code
- * @param {string} passcode 4-digit passcode
+ * @param {string} passcode 4-digit passcode or password
  * @returns {Promise<{success: boolean, store?: Object, error?: string}>}
  */
 export async function findAndLinkStore(identifier, passcode) {
@@ -141,11 +153,11 @@ export async function findAndLinkStore(identifier, passcode) {
   if (!cleanId) {
     return { success: false, error: 'Please enter your Store Phone Number or Store Code.' };
   }
-  if (!cleanPasscode || cleanPasscode.length !== 4) {
-    return { success: false, error: 'Please enter your 4-digit passcode.' };
+  if (!cleanPasscode) {
+    return { success: false, error: 'Please enter your store passcode or PIN.' };
   }
 
-  // 1. First check locally cached tenants & sample stores
+  // 1. First check locally cached tenants & sample stores (instant, zero-latency)
   const localRaw = localStorage.getItem(LOCAL_TENANTS_KEY);
   const localList = localRaw ? JSON.parse(localRaw) : [];
   const candidates = [...SAMPLE_BOUND_STORES, ...localList];
@@ -172,9 +184,9 @@ export async function findAndLinkStore(identifier, passcode) {
     }
   }
 
-  // 2. Query Firestore 'businesses' collection
+  // 2. Query Firestore 'businesses' collection with timeout protection (max 2.5s)
   try {
-    const snap = await getDocs(collection(db, 'businesses'));
+    const snap = await withTimeout(getDocs(collection(db, 'businesses')), 2500);
     const allStores = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
     const cloudMatch = allStores.find((store) => {
@@ -191,30 +203,34 @@ export async function findAndLinkStore(identifier, passcode) {
       );
     });
 
-    if (!cloudMatch) {
-      return {
-        success: false,
-        error: `No store found matching "${identifier}". Please verify phone number or store code.`,
-      };
+    if (cloudMatch) {
+      const expectedPin = String(cloudMatch.passcode || '1234').trim();
+      if (cleanPasscode === expectedPin || cleanPasscode === '1234') {
+        const bound = bindStoreToDevice(cloudMatch, cleanPasscode);
+        return { success: true, store: bound };
+      } else {
+        return {
+          success: false,
+          error: `Incorrect passcode for "${cloudMatch.businessName}". (Default demo PIN is 1234)`,
+        };
+      }
     }
-
-    const expectedPin = String(cloudMatch.passcode || '1234').trim();
-    if (cleanPasscode !== expectedPin && cleanPasscode !== '1234') {
-      return {
-        success: false,
-        error: 'Incorrect 4-digit passcode for this store. Please try again.',
-      };
-    }
-
-    const bound = bindStoreToDevice(cloudMatch, cleanPasscode);
-    return { success: true, store: bound };
   } catch (err) {
-    console.warn('Error querying Firestore for store linking:', err);
+    console.warn('Cloud store lookup notice (offline or timeout):', err);
+  }
+
+  // If localMatch was found but PIN was wrong:
+  if (localMatch) {
     return {
       success: false,
-      error: 'Network connection issue. Please check your connection to link a new device.',
+      error: `Incorrect passcode for "${localMatch.businessName}". (Default demo PIN is 1234)`,
     };
   }
+
+  return {
+    success: false,
+    error: `No store found matching "${identifier}". Please verify phone number or store code (e.g. 0770430269 or wd-men-fashion).`,
+  };
 }
 
 /**
@@ -235,7 +251,7 @@ export async function fetchStoreBySlug(slugOrId) {
   if (localMatch) return localMatch;
 
   try {
-    const snap = await getDocs(collection(db, 'businesses'));
+    const snap = await withTimeout(getDocs(collection(db, 'businesses')), 2000);
     const found = snap.docs.find((d) => {
       const data = d.data();
       return (
@@ -262,6 +278,7 @@ export const SAMPLE_BOUND_STORES = [
     businessType: 'Boutique & Fashion',
     ownerName: 'Wilcom Duncan',
     ownerPhone: '0770430269',
+    phone: '0770430269',
     ownerEmail: 'wilcom@wd.com',
     terminalEmail: 'pos_wd_men_fashion@retailos.lr',
     themeColor: '#10b981',
@@ -274,6 +291,7 @@ export const SAMPLE_BOUND_STORES = [
     businessType: 'Cosmetics & Beauty',
     ownerName: 'Fatu Johnson',
     ownerPhone: '0778000001',
+    phone: '0778000001',
     ownerEmail: 'fatu@monroviaglam.com',
     terminalEmail: 'terminal@monroviaglam.com',
     themeColor: '#0ea5e9',

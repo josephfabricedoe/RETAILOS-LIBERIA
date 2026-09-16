@@ -59,6 +59,7 @@ export default function LoginPage({ onBackToLanding, onSuccess, onOpenCatalog, o
   // Link Existing Store State
   const [linkIdentifier, setLinkIdentifier] = useState('');
   const [linkPasscode, setLinkPasscode] = useState('');
+  const [showLinkPw, setShowLinkPw] = useState(false);
   const [linkLoading, setLinkLoading] = useState(false);
 
   // Platform Admin State
@@ -185,24 +186,27 @@ export default function LoginPage({ onBackToLanding, onSuccess, onOpenCatalog, o
   // Handle Linking an Existing Store to this New Device
   const handleLinkExistingStore = async (e) => {
     e.preventDefault();
-    if (!linkIdentifier.trim()) {
+    const cleanId = linkIdentifier.trim();
+    const cleanPass = linkPasscode.trim();
+
+    if (!cleanId) {
       setError('Please enter your Store Phone Number or Store Code.');
       return;
     }
-    if (linkPasscode.length !== 4 || !/^[0-9]{4}$/.test(linkPasscode)) {
-      setError('Please enter your 4-digit passcode (e.g. 1234).');
+    if (!cleanPass) {
+      setError('Please enter your 4-digit store passcode or PIN (e.g. 1234).');
       return;
     }
 
     setError('');
     setLinkLoading(true);
 
-    const res = await findAndLinkStore(linkIdentifier, linkPasscode);
+    try {
+      const res = await findAndLinkStore(cleanId, cleanPass);
 
-    if (res.success && res.store) {
-      setBoundStore(res.store);
-      setPinSuccess(true);
-      setTimeout(() => {
+      if (res.success && res.store) {
+        setBoundStore(res.store);
+        setPinSuccess(true);
         if (loginWithDevicePasscode) {
           loginWithDevicePasscode(res.store);
         } else if (loginAsLocalUser) {
@@ -222,12 +226,15 @@ export default function LoginPage({ onBackToLanding, onSuccess, onOpenCatalog, o
 
         if (onSuccess) onSuccess();
         window.location.hash = '#workspace';
-      }, 200);
-    } else {
-      setError(res.error || 'Unable to link store. Please check your phone number and PIN.');
+      } else {
+        setError(res.error || 'Unable to link store. Please check your phone number and PIN.');
+      }
+    } catch (err) {
+      console.warn('Link store error:', err);
+      setError('Connection notice: Unable to link store right now. Please verify your phone number or use demo store.');
+    } finally {
+      setLinkLoading(false);
     }
-
-    setLinkLoading(false);
   };
 
   // Handle Platform Admin Email Sign In
@@ -663,20 +670,30 @@ export default function LoginPage({ onBackToLanding, onSuccess, onOpenCatalog, o
               </div>
 
               <div>
-                <label className="block font-bold text-slate-300 uppercase tracking-wider mb-1">
-                  Your 4-Digit Store Passcode *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-300 uppercase tracking-wider">
+                    Store Passcode / PIN *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowLinkPw(!showLinkPw)}
+                    className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1"
+                  >
+                    {showLinkPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>{showLinkPw ? 'Hide' : 'Show'}</span>
+                  </button>
+                </div>
                 <input
-                  type="password"
-                  inputMode="numeric"
-                  pattern="[0-9]{4}"
-                  maxLength={4}
+                  type={showLinkPw ? 'text' : 'password'}
                   required
                   value={linkPasscode}
-                  onChange={(e) => setLinkPasscode(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
-                  placeholder="••••"
-                  className="w-full bg-slate-900 border-2 border-emerald-500/60 rounded-xl px-4 py-2.5 text-center font-mono font-black text-2xl tracking-[0.5em] text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  onChange={(e) => setLinkPasscode(e.target.value)}
+                  placeholder="e.g. 1234"
+                  className="w-full bg-slate-900 border-2 border-emerald-500/60 rounded-xl px-4 py-2.5 text-center font-mono font-bold text-xl tracking-widest text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Default demo PIN for WD Men Fashion is <strong className="text-emerald-400 font-mono">1234</strong>
+                </p>
               </div>
 
               <button
