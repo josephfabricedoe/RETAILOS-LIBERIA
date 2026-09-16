@@ -110,8 +110,6 @@ export default function Shell({ onGoToCatalog, onGoToLanding, onSignOut }) {
       if (activeModule !== defaultMod) {
         setActiveModule(defaultMod);
       }
-    } else if (isSuper && activeModule === 'pos') {
-      setActiveModule('superadmin');
     }
   }, [userRole, activeModule, setActiveModule, isSuper]);
 

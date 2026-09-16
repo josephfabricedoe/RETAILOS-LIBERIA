@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { useTenant } from './contexts/TenantContext';
 import { useApp } from './contexts/AppContext';
@@ -108,17 +108,23 @@ export default function App() {
     };
   }, []);
 
+  const superAdminInitializedRef = useRef(false);
+
   // Synchronize view with authentication state
   useEffect(() => {
     if (currentUser && currentView !== 'catalog') {
       setCurrentView('workspace');
-      if (isSuperAdmin) {
+      if (isSuperAdmin && !superAdminInitializedRef.current) {
         setActiveModule('superadmin');
+        superAdminInitializedRef.current = true;
       }
-    } else if (!currentUser && currentView === 'workspace') {
-      setCurrentView('login');
+    } else if (!currentUser) {
+      superAdminInitializedRef.current = false;
+      if (currentView === 'workspace') {
+        setCurrentView('login');
+      }
     }
-  }, [currentUser, isSuperAdmin]);
+  }, [currentUser, isSuperAdmin, currentView, setActiveModule]);
 
   // Non-blocking auth resolution: Never stall the user on login or catalog screens
   if (authLoading && currentView === 'workspace' && !currentUser) {

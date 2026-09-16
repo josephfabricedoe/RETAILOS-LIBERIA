@@ -66,22 +66,46 @@ export default function SuperAdminDashboard({ onEnterStore }) {
     }
   });
 
-  // Subscribe to live leads from Firestore
+  // Subscribe to live leads from Firestore with offline cache fallback
   useEffect(() => {
+    let unsub = () => {};
     try {
-      const unsub = onSnapshot(collection(db, 'leads'), (snap) => {
-        const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        if (fetched.length > 0) {
-          setLeads(fetched);
+      unsub = onSnapshot(
+        collection(db, 'leads'),
+        (snap) => {
+          const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          
+          // Merge with any local cache leads so none are lost
+          let merged = [...fetched];
           try {
-            localStorage.setItem('retailos_local_leads', JSON.stringify(fetched));
+            const local = JSON.parse(localStorage.getItem('retailos_local_leads') || '[]');
+            for (const item of local) {
+              if (!merged.some(m => m.id === item.id || (m.businessName === item.businessName && m.phone === item.phone))) {
+                merged.push(item);
+              }
+            }
           } catch (e) {}
+
+          // Sort descending by creation date (newest first)
+          merged.sort((a, b) => {
+            const dateA = new Date(a.createdAt || (a.serverCreatedAt?.seconds ? a.serverCreatedAt.seconds * 1000 : 0));
+            const dateB = new Date(b.createdAt || (b.serverCreatedAt?.seconds ? b.serverCreatedAt.seconds * 1000 : 0));
+            return dateB - dateA;
+          });
+
+          setLeads(merged);
+          try {
+            localStorage.setItem('retailos_local_leads', JSON.stringify(merged));
+          } catch (e) {}
+        },
+        (err) => {
+          console.warn('Leads live subscription notice:', err);
         }
-      });
-      return unsub;
+      );
     } catch (e) {
-      console.warn('Leads snapshot notice:', e);
+      console.warn('Leads snapshot setup warning:', e);
     }
+    return () => unsub();
   }, []);
 
   const pendingLeadsCount = leads.filter((l) => l.status !== 'onboarded').length;
@@ -152,6 +176,52 @@ export default function SuperAdminDashboard({ onEnterStore }) {
       setDeleteError('Failed to delete store. Please try again.');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const [isRefreshingLeads, setIsRefreshingLeads] = useState(false);
+
+  const handleRefreshLeads = async () => {
+    setIsRefreshingLeads(true);
+    try {
+      const snap = await getDocs(collection(db, 'leads'));
+      const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      let merged = [...fetched];
+      try {
+        const local = JSON.parse(localStorage.getItem('retailos_local_leads') || '[]');
+        for (const item of local) {
+          if (!merged.some(m => m.id === item.id || (m.businessName === item.businessName && m.phone === item.phone))) {
+            merged.push(item);
+          }
+        }
+      } catch (e) {}
+      merged.sort((a, b) => {
+        const dateA = new Date(a.createdAt || (a.serverCreatedAt?.seconds ? a.serverCreatedAt.seconds * 1000 : 0));
+        const dateB = new Date(b.createdAt || (b.serverCreatedAt?.seconds ? b.serverCreatedAt.seconds * 1000 : 0));
+        return dateB - dateA;
+      });
+      setLeads(merged);
+      try {
+        localStorage.setItem('retailos_local_leads', JSON.stringify(merged));
+      } catch (e) {}
+    } catch (err) {
+      console.warn('Manual leads refresh note:', err);
+    } finally {
+      setIsRefreshingLeads(false);
+    }
+  };
+
+  const handleDeleteLead = async (leadId) => {
+    if (!window.confirm('Delete this merchant inquiry?')) return;
+    setLeads((prev) => prev.filter((l) => l.id !== leadId));
+    try {
+      const local = JSON.parse(localStorage.getItem('retailos_local_leads') || '[]');
+      localStorage.setItem('retailos_local_leads', JSON.stringify(local.filter((l) => l.id !== leadId)));
+    } catch (e) {}
+    try {
+      await deleteDoc(doc(db, 'leads', leadId));
+    } catch (e) {
+      console.warn('Delete lead warning:', e);
     }
   };
 
@@ -669,16 +739,27 @@ export default function SuperAdminDashboard({ onEnterStore }) {
               <h2 className="text-lg font-black text-white">Merchant Inquiries from Website</h2>
               <p className="text-xs text-slate-400">Prospective retail businesses who filled out "Register Your Business" on the website</p>
             </div>
-            <button
-              onClick={() => {
-                setSelectedLead(null);
-                setShowNewStoreModal(true);
-              }}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Manual Business Setup</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleRefreshLeads}
+                disabled={isRefreshingLeads}
+                className="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-sm disabled:opacity-50"
+                title="Force refresh leads from Firestore"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingLeads ? 'animate-spin text-emerald-400' : 'text-slate-400'}`} />
+                <span>{isRefreshingLeads ? 'Refreshing...' : 'Refresh Leads'}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedLead(null);
+                  setShowNewStoreModal(true);
+                }}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Manual Business Setup</span>
+              </button>
+            </div>
           </div>
 
           {leads.length === 0 ? (
@@ -707,11 +788,20 @@ export default function SuperAdminDashboard({ onEnterStore }) {
                         <span className="font-extrabold text-white text-base block">{lead.businessName}</span>
                         <span className="text-xs text-emerald-400 font-semibold">{lead.businessType || 'Retail'}</span>
                       </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        isOnboarded ? 'bg-slate-700 text-slate-300' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      }`}>
-                        {isOnboarded ? '✓ Onboarded' : '★ New Lead'}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          isOnboarded ? 'bg-slate-700 text-slate-300' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        }`}>
+                          {isOnboarded ? '✓ Onboarded' : '★ New Lead'}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteLead(lead.id)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition"
+                          title="Delete / Dismiss inquiry"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">

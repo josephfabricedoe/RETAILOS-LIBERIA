@@ -13,7 +13,7 @@ import {
   MessageCircle,
   Clock
 } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 
 const BUSINESS_CATEGORIES = [
@@ -86,14 +86,22 @@ export default function RegisterInterestModal({ onClose }) {
       console.warn('Local lead cache warning:', e);
     }
 
-    // 2. Sync to Firestore in background
+    // 2. Sync to Firestore in cloud
     try {
-      await addDoc(collection(db, 'leads'), {
+      await setDoc(doc(db, 'leads', leadData.id), {
         ...leadData,
         serverCreatedAt: serverTimestamp(),
       });
     } catch (err) {
-      console.warn('Firestore lead submission note:', err);
+      console.warn('Firestore setDoc notice, attempting addDoc fallback:', err);
+      try {
+        await addDoc(collection(db, 'leads'), {
+          ...leadData,
+          serverCreatedAt: serverTimestamp(),
+        });
+      } catch (fallbackErr) {
+        console.error('Firestore lead persistence error:', fallbackErr);
+      }
     } finally {
       setSubmitting(false);
       setSubmitted(true);
