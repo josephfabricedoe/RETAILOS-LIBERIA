@@ -9,6 +9,7 @@ import NotificationBell from '../shared/NotificationBell';
 import PwaInstallPrompt from '../shared/PwaInstallPrompt';
 import TerminalPinModal from '../auth/TerminalPinModal';
 import LaunchpadChecklist from '../shared/LaunchpadChecklist';
+import ConnectivityBadge from '../shared/ConnectivityBadge';
 
 // Views (Lazily loaded for instant shell bootup)
 const POSView = React.lazy(() => import('../pos/POSView'));
@@ -229,6 +230,7 @@ export default function Shell({ onGoToCatalog, onGoToLanding }) {
 
           <CurrencyToggle />
           <NotificationBell />
+          <ConnectivityBadge />
           <button
             onClick={signOut}
             className="md:hidden p-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition"

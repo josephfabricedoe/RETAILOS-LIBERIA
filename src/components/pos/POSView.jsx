@@ -24,9 +24,11 @@ import {
   RotateCcw, 
   Phone,
   Store,
-  Sparkles
+  Sparkles,
+  WifiOff
 } from 'lucide-react';
 import { connectBluetoothPrinter, getConnectedPrinterName } from '../../utils/bluetoothPrinter';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 export const DEFAULT_RETAIL_CATEGORIES = [
   'All',
@@ -45,6 +47,7 @@ export default function POSView() {
   const { exchangeRate } = useApp();
   const { format } = useCurrency();
   const { getTenantCol, getTenantDoc, tenantId, currentTenant } = useTenant();
+  const { isOnline } = useNetworkStatus();
 
   const [allProducts, setAllProducts] = useState([]);
   const [customersList, setCustomersList] = useState([]);
@@ -524,6 +527,17 @@ export default function POSView() {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-4">
+              {/* Offline Checkout Notice */}
+              {!isOnline && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-center gap-2.5">
+                  <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
+                  <div>
+                    <span className="font-bold block">Offline Mode Active</span>
+                    <span className="text-[11px] text-amber-800">This sale will be recorded locally and auto-synced to the cloud upon reconnect.</span>
+                  </div>
+                </div>
+              )}
+
               {/* Order Amount Summary */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
                 <div className="flex justify-between text-xs text-slate-600 font-semibold">
