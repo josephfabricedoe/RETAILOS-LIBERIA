@@ -3,7 +3,6 @@
     "rules": "firestore.rules"
   },
   "hosting": {
-    "target": "retailos",
     "public": "dist",
     "ignore": [
       "firebase.json",

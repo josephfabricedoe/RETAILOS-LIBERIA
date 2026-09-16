@@ -5,15 +5,14 @@ import {
   memoryLocalCache 
 } from 'firebase/firestore';
 
-// RetailOS Liberia - Firebase Configuration
-// Uses environment variables with production fallback
+// RetailOS Liberia - Dedicated Standalone Firebase Project
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyABnn-dG_UIJ-3UpbfvL5KMP0gBey6rkI8',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'jam-beauty-store-online.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'jam-beauty-store-online',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'jam-beauty-store-online.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '794552738927',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:794552738927:web:c544c1b3bce5fe18b5199a',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyB16b1F5FiKjIe6sS5tGqKHx_5_TYzk-Gc',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'retailos-liberia-212ba.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'retailos-liberia-212ba',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'retailos-liberia-212ba.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '936212835355',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:936212835355:web:91b497c2b3ce01b9b79cbe',
 };
 
 const app = initializeApp(firebaseConfig);

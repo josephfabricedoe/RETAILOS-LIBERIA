@@ -1,14 +1,5 @@
 {
   "projects": {
-    "default": "jam-beauty-store-online"
-  },
-  "targets": {
-    "jam-beauty-store-online": {
-      "hosting": {
-        "retailos": [
-          "retailos-liberia"
-        ]
-      }
-    }
+    "default": "retailos-liberia-212ba"
   }
 }
