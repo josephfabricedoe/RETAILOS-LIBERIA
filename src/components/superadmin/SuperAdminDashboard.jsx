@@ -72,6 +72,7 @@ export default function SuperAdminDashboard({ onEnterStore }) {
       return [];
     }
   });
+  const [leadFilterTab, setLeadFilterTab] = useState('pending'); // 'pending' | 'onboarded' | 'all'
 
   // Subscribe to live leads from Firestore with direct fetch & offline cache fallback
   useEffect(() => {
@@ -82,7 +83,15 @@ export default function SuperAdminDashboard({ onEnterStore }) {
       try {
         const snap = await getDocs(collection(db, 'leads'));
         if (!snap.empty && mounted) {
-          const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          const fetched = snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              ...data,
+              id: d.id,
+              firestoreDocId: d.id,
+              internalId: data.id || d.id,
+            };
+          });
           fetched.sort((a, b) => {
             const dateA = new Date(a.createdAt || (a.serverCreatedAt?.seconds ? a.serverCreatedAt.seconds * 1000 : 0));
             const dateB = new Date(b.createdAt || (b.serverCreatedAt?.seconds ? b.serverCreatedAt.seconds * 1000 : 0));
@@ -106,16 +115,25 @@ export default function SuperAdminDashboard({ onEnterStore }) {
         collection(db, 'leads'),
         (snap) => {
           if (!mounted) return;
-          const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          const fetched = snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              ...data,
+              id: d.id,
+              firestoreDocId: d.id,
+              internalId: data.id || d.id,
+            };
+          });
           
           let merged = [...fetched];
           try {
             const local = JSON.parse(localStorage.getItem('retailos_local_leads') || '[]');
             for (const item of local) {
-              if (!merged.some(m => m.id === item.id || (m.businessName === item.businessName && m.phone === item.phone))) {
+              const itemDocId = item.firestoreDocId || item.id;
+              if (!merged.some(m => m.id === itemDocId || m.firestoreDocId === itemDocId || m.internalId === item.id || (m.businessName === item.businessName && m.phone === item.phone))) {
                 merged.push(item);
                 // Auto-sync local lead to Firestore
-                setDoc(doc(db, 'leads', item.id), item, { merge: true }).catch(() => {});
+                setDoc(doc(db, 'leads', itemDocId), item, { merge: true }).catch(() => {});
               }
             }
           } catch (e) {}
@@ -145,7 +163,14 @@ export default function SuperAdminDashboard({ onEnterStore }) {
     };
   }, []);
 
-  const pendingLeadsCount = leads.filter((l) => l.status !== 'onboarded').length;
+  const pendingLeads = leads.filter((l) => l.status !== 'onboarded');
+  const onboardedLeads = leads.filter((l) => l.status === 'onboarded');
+  const displayedLeads = leadFilterTab === 'pending'
+    ? pendingLeads
+    : leadFilterTab === 'onboarded'
+    ? onboardedLeads
+    : leads;
+  const pendingLeadsCount = pendingLeads.length;
 
   // Platform Aggregate KPIs
   const totalStores = allTenants.length;
@@ -224,12 +249,21 @@ export default function SuperAdminDashboard({ onEnterStore }) {
     setIsRefreshingLeads(true);
     try {
       const snap = await getDocs(collection(db, 'leads'));
-      const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const fetched = snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          ...data,
+          id: d.id,
+          firestoreDocId: d.id,
+          internalId: data.id || d.id,
+        };
+      });
       let merged = [...fetched];
       try {
         const local = JSON.parse(localStorage.getItem('retailos_local_leads') || '[]');
         for (const item of local) {
-          if (!merged.some(m => m.id === item.id || (m.businessName === item.businessName && m.phone === item.phone))) {
+          const itemDocId = item.firestoreDocId || item.id;
+          if (!merged.some(m => m.id === itemDocId || m.firestoreDocId === itemDocId || m.internalId === item.id || (m.businessName === item.businessName && m.phone === item.phone))) {
             merged.push(item);
           }
         }
@@ -243,6 +277,7 @@ export default function SuperAdminDashboard({ onEnterStore }) {
       try {
         localStorage.setItem('retailos_local_leads', JSON.stringify(merged));
       } catch (e) {}
+      showToast('Merchant inquiries refreshed!');
     } catch (err) {
       console.warn('Manual leads refresh note:', err);
     } finally {
@@ -250,15 +285,21 @@ export default function SuperAdminDashboard({ onEnterStore }) {
     }
   };
 
-  const handleDeleteLead = async (leadId) => {
-    if (!window.confirm('Delete this merchant inquiry?')) return;
-    setLeads((prev) => prev.filter((l) => l.id !== leadId));
+  const handleDeleteLead = async (lead) => {
+    if (!window.confirm(`Delete merchant inquiry for "${lead?.businessName || 'this business'}"?`)) return;
+    const docId = lead?.firestoreDocId || lead?.id;
+    const intId = lead?.internalId;
+
+    setLeads((prev) => prev.filter((l) => l.id !== docId && l.id !== intId && l.firestoreDocId !== docId));
     try {
       const local = JSON.parse(localStorage.getItem('retailos_local_leads') || '[]');
-      localStorage.setItem('retailos_local_leads', JSON.stringify(local.filter((l) => l.id !== leadId)));
+      const filtered = local.filter((l) => l.id !== docId && l.id !== intId);
+      localStorage.setItem('retailos_local_leads', JSON.stringify(filtered));
     } catch (e) {}
     try {
-      await deleteDoc(doc(db, 'leads', leadId));
+      if (docId) await deleteDoc(doc(db, 'leads', docId));
+      if (intId && intId !== docId) await deleteDoc(doc(db, 'leads', intId)).catch(() => {});
+      showToast('Inquiry deleted');
     } catch (e) {
       console.warn('Delete lead warning:', e);
     }
@@ -777,7 +818,18 @@ export default function SuperAdminDashboard({ onEnterStore }) {
                       <tr key={t.businessId || t.id} className="hover:bg-slate-750/40">
                         <td className="py-3.5 px-4 font-bold text-white">{t.businessName}</td>
                         <td className="py-3.5 px-4 text-slate-300">{t.ownerName || 'Merchant'}</td>
-                        <td className="py-3.5 px-4 uppercase font-bold text-cyan-300">{plan}</td>
+                        <td className="py-3.5 px-4">
+                          <select
+                            value={plan}
+                            onChange={(e) => handleUpdatePlan(t, e.target.value)}
+                            className="bg-slate-900 border border-slate-700 hover:border-cyan-500 rounded-lg px-2 py-1 text-[11px] font-bold text-cyan-300 focus:outline-none cursor-pointer uppercase transition-colors"
+                            title="Super-Admin: Change subscription plan"
+                          >
+                            <option value="starter">Starter ($0 Free)</option>
+                            <option value="growth">Growth ($19.99/mo)</option>
+                            <option value="enterprise">Enterprise ($39.99/mo)</option>
+                          </select>
+                        </td>
                         <td className="py-3.5 px-4 font-mono font-bold text-emerald-400">
                           {fee === 0 ? 'Free' : `$${fee.toFixed(2)} USD`}
                         </td>
@@ -836,24 +888,85 @@ export default function SuperAdminDashboard({ onEnterStore }) {
             </div>
           </div>
 
-          {leads.length === 0 ? (
+          {/* Sub-tabs: Pending Inquiries vs Onboarded Stores vs All */}
+          <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-700/60">
+            <button
+              onClick={() => setLeadFilterTab('pending')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                leadFilterTab === 'pending'
+                  ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                  : 'bg-slate-750 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <span>Pending Requests</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                leadFilterTab === 'pending' ? 'bg-slate-950 text-emerald-300' : 'bg-slate-800 text-slate-400'
+              }`}>
+                {pendingLeads.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setLeadFilterTab('onboarded')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                leadFilterTab === 'onboarded'
+                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                  : 'bg-slate-750 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <span>Onboarded Stores</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                leadFilterTab === 'onboarded' ? 'bg-slate-950 text-cyan-300' : 'bg-slate-800 text-slate-400'
+              }`}>
+                {onboardedLeads.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setLeadFilterTab('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                leadFilterTab === 'all'
+                  ? 'bg-slate-200 text-slate-950 shadow-sm'
+                  : 'bg-slate-750 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <span>All Inquiries</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                leadFilterTab === 'all' ? 'bg-slate-950 text-slate-200' : 'bg-slate-800 text-slate-400'
+              }`}>
+                {leads.length}
+              </span>
+            </button>
+          </div>
+
+          {displayedLeads.length === 0 ? (
             <div className="py-12 text-center text-slate-500 space-y-2">
               <MessageCircle className="w-8 h-8 mx-auto text-slate-600" />
-              <p className="text-sm font-semibold">No merchant inquiries received yet.</p>
-              <p className="text-xs text-slate-500">When visitors submit registration requests on the homepage, their details appear here in real-time.</p>
+              <p className="text-sm font-semibold">
+                {leadFilterTab === 'pending'
+                  ? 'No pending merchant requests.'
+                  : leadFilterTab === 'onboarded'
+                  ? 'No stores onboarded from leads yet.'
+                  : 'No merchant inquiries received yet.'}
+              </p>
+              <p className="text-xs text-slate-500">
+                {leadFilterTab === 'pending'
+                  ? 'All received inbound registration requests have been onboarded as live stores!'
+                  : 'When visitors submit registration requests on the homepage, their details appear here in real-time.'}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {leads.map((lead) => {
+              {displayedLeads.map((lead) => {
                 const isOnboarded = lead.status === 'onboarded';
                 const cleanPhone = (lead.phone || '').replace(/[^0-9]/g, '');
 
                 return (
                   <div 
-                    key={lead.id} 
+                    key={lead.firestoreDocId || lead.id || lead.internalId} 
                     className={`p-4 rounded-2xl border transition-all space-y-3 ${
                       isOnboarded 
-                        ? 'bg-slate-850/60 border-slate-700 opacity-75' 
+                        ? 'bg-slate-850/60 border-slate-750' 
                         : 'bg-slate-750/90 border-emerald-500/50 shadow-lg shadow-emerald-950/20'
                     }`}
                   >
@@ -864,12 +977,12 @@ export default function SuperAdminDashboard({ onEnterStore }) {
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                          isOnboarded ? 'bg-slate-700 text-slate-300' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                          isOnboarded ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                         }`}>
                           {isOnboarded ? '✓ Onboarded' : '★ New Lead'}
                         </span>
                         <button
-                          onClick={() => handleDeleteLead(lead.id)}
+                          onClick={() => handleDeleteLead(lead)}
                           className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition"
                           title="Delete / Dismiss inquiry"
                         >
@@ -899,7 +1012,7 @@ export default function SuperAdminDashboard({ onEnterStore }) {
                     </div>
 
                     <div className="pt-2 flex items-center gap-2 border-t border-slate-700/60">
-                      {!isOnboarded && (
+                      {!isOnboarded ? (
                         <button
                           onClick={() => {
                             setSelectedLead(lead);
@@ -910,6 +1023,21 @@ export default function SuperAdminDashboard({ onEnterStore }) {
                           <Plus className="w-3.5 h-3.5" />
                           <span>Onboard as Live Store</span>
                         </button>
+                      ) : lead.onboardedStoreId ? (
+                        <button
+                          onClick={() => {
+                            switchTenant(lead.onboardedStoreId);
+                            setActiveModule('pos');
+                          }}
+                          className="flex-1 py-2 px-3 bg-slate-700 hover:bg-slate-600 text-cyan-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Access Store Workspace</span>
+                        </button>
+                      ) : (
+                        <span className="flex-1 text-center py-1.5 text-[11px] text-slate-400 font-semibold">
+                          Store active on RetailOS
+                        </span>
                       )}
 
                       {cleanPhone && (
@@ -1077,13 +1205,49 @@ export default function SuperAdminDashboard({ onEnterStore }) {
             setSelectedLead(null);
           }}
           onCreated={(store) => {
-            if (selectedLead?.id) {
+            if (selectedLead) {
+              const leadDocId = selectedLead.firestoreDocId || selectedLead.id;
+              const intId = selectedLead.internalId;
+
+              // 1. Update state immediately
               setLeads((prev) =>
-                prev.map((l) => (l.id === selectedLead.id ? { ...l, status: 'onboarded' } : l))
+                prev.map((l) =>
+                  (l.id === leadDocId || l.id === intId || l.firestoreDocId === leadDocId || l.internalId === leadDocId)
+                    ? { ...l, status: 'onboarded', onboardedAt: new Date().toISOString(), onboardedStoreId: store.businessId || store.id }
+                    : l
+                )
               );
+
+              // 2. Update local storage immediately
               try {
-                updateDoc(doc(db, 'leads', selectedLead.id), { status: 'onboarded' }).catch(() => {});
+                const local = JSON.parse(localStorage.getItem('retailos_local_leads') || '[]');
+                const updated = local.map((l) =>
+                  (l.id === leadDocId || l.id === intId)
+                    ? { ...l, status: 'onboarded', onboardedAt: new Date().toISOString(), onboardedStoreId: store.businessId || store.id }
+                    : l
+                );
+                localStorage.setItem('retailos_local_leads', JSON.stringify(updated));
               } catch (e) {}
+
+              // 3. Update Firestore doc(s)
+              try {
+                if (leadDocId) {
+                  setDoc(doc(db, 'leads', leadDocId), {
+                    status: 'onboarded',
+                    onboardedAt: new Date().toISOString(),
+                    onboardedStoreId: store.businessId || store.id,
+                  }, { merge: true }).catch(console.warn);
+                }
+                if (intId && intId !== leadDocId) {
+                  setDoc(doc(db, 'leads', intId), {
+                    status: 'onboarded',
+                    onboardedAt: new Date().toISOString(),
+                    onboardedStoreId: store.businessId || store.id,
+                  }, { merge: true }).catch(() => {});
+                }
+              } catch (e) {}
+
+              showToast(`✓ Onboarded ${store.businessName} as live store!`);
             }
           }}
         />

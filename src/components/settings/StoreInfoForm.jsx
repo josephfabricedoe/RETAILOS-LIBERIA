@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Store, 
   Phone, 
@@ -34,7 +34,7 @@ const COLOR_PRESETS = [
 ];
 
 export default function StoreInfoForm() {
-  const { currentStore, currentTenant, tenantId, isSuperAdmin } = useTenant();
+  const { currentStore, currentTenant, tenantId, isSuperAdmin, updateTenant, updateTenantById } = useTenant();
   const { updateCurrencySettings } = useApp();
 
   const storePlan = currentTenant?.subscriptionPlan || currentStore?.subscriptionPlan || 'starter';
@@ -42,26 +42,61 @@ export default function StoreInfoForm() {
   const canHideWatermark = isSuperAdmin || storePlan === 'enterprise';
 
   const [formData, setFormData] = useState({
-    name: currentStore?.name || '',
-    category: currentStore?.category || 'General Retail',
-    tagline: currentStore?.tagline || '',
-    phone: currentStore?.phone || '',
-    whatsappNumber: currentStore?.whatsappNumber || currentStore?.phone || '',
-    address: currentStore?.address || '',
-    logoUrl: currentStore?.logoUrl || '',
-    themeColor: currentStore?.themeColor || '#10b981',
-    receiptFooter: currentStore?.receiptFooter || 'Thank you for your patronage! Please keep your receipt.',
-    momoNumber: currentStore?.momoNumber || '',
-    orangeNumber: currentStore?.orangeNumber || '',
-    hideWatermark: currentStore?.hideWatermark || false,
+    name: currentTenant?.businessName || currentStore?.name || '',
+    category: currentTenant?.businessType || currentStore?.category || 'General Retail',
+    tagline: currentTenant?.tagline || currentStore?.tagline || '',
+    phone: currentTenant?.phone || currentTenant?.ownerPhone || currentStore?.phone || '',
+    whatsappNumber: currentTenant?.whatsappNumber || currentTenant?.phone || currentStore?.phone || '',
+    address: currentTenant?.address || currentStore?.address || '',
+    logoUrl: currentTenant?.logoUrl || currentStore?.logoUrl || '',
+    themeColor: currentTenant?.themeColor || currentStore?.themeColor || '#10b981',
+    receiptFooter: currentTenant?.receiptFooter || currentStore?.receiptFooter || 'Thank you for your patronage! Please keep your receipt.',
+    momoNumber: currentTenant?.momoNumber || currentStore?.momoNumber || '',
+    orangeNumber: currentTenant?.orangeNumber || currentStore?.orangeNumber || '',
+    hideWatermark: currentTenant?.hideWatermark || currentStore?.hideWatermark || false,
     // Currency configuration
-    currencyMode: currentStore?.currencyMode || 'dual',
-    primaryCurrency: currentStore?.primaryCurrency || currentStore?.defaultCurrency || 'USD',
-    primarySymbol: currentStore?.primarySymbol || '$',
-    secondaryCurrency: currentStore?.secondaryCurrency || 'LRD',
-    secondarySymbol: currentStore?.secondarySymbol || 'L$',
-    exchangeRate: currentStore?.exchangeRate || currentStore?.fxRate || 198
+    currencyMode: currentTenant?.currencyMode || currentStore?.currencyMode || 'dual',
+    primaryCurrency: currentTenant?.primaryCurrency || currentStore?.defaultCurrency || 'USD',
+    primarySymbol: currentTenant?.primarySymbol || currentStore?.primarySymbol || '$',
+    secondaryCurrency: currentTenant?.secondaryCurrency || currentStore?.secondaryCurrency || 'LRD',
+    secondarySymbol: currentTenant?.secondarySymbol || currentStore?.secondarySymbol || 'L$',
+    exchangeRate: currentTenant?.exchangeRate || currentStore?.exchangeRate || currentStore?.fxRate || 198
   });
+
+  // Keep form data synchronized when active tenant or store changes or finishes loading
+  useEffect(() => {
+    const s = currentTenant || currentStore;
+    if (!s) return;
+    setFormData(prev => ({
+      ...prev,
+      name: s.businessName || s.name || prev.name,
+      category: s.businessType || s.category || prev.category,
+      tagline: s.tagline !== undefined ? s.tagline : prev.tagline,
+      phone: s.phone || s.ownerPhone || prev.phone,
+      whatsappNumber: s.whatsappNumber || s.phone || s.ownerPhone || prev.whatsappNumber,
+      address: s.address !== undefined ? s.address : prev.address,
+      logoUrl: s.logoUrl !== undefined ? s.logoUrl : prev.logoUrl,
+      themeColor: s.themeColor || prev.themeColor,
+      receiptFooter: s.receiptFooter !== undefined ? s.receiptFooter : prev.receiptFooter,
+      momoNumber: s.momoNumber !== undefined ? s.momoNumber : prev.momoNumber,
+      orangeNumber: s.orangeNumber !== undefined ? s.orangeNumber : prev.orangeNumber,
+      hideWatermark: s.hideWatermark !== undefined ? s.hideWatermark : prev.hideWatermark,
+      currencyMode: s.currencyMode || prev.currencyMode,
+      primaryCurrency: s.primaryCurrency || s.defaultCurrency || prev.primaryCurrency,
+      primarySymbol: s.primarySymbol || prev.primarySymbol,
+      secondaryCurrency: s.secondaryCurrency || prev.secondaryCurrency,
+      secondarySymbol: s.secondarySymbol || prev.secondarySymbol,
+      exchangeRate: s.exchangeRate || s.fxRate || prev.exchangeRate,
+    }));
+  }, [
+    currentTenant?.businessId,
+    currentTenant?.id,
+    currentTenant?.businessName,
+    currentTenant?.name,
+    currentTenant?.updatedAt,
+    currentStore?.businessId,
+    currentStore?.name
+  ]);
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -128,21 +163,35 @@ export default function StoreInfoForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!tenantId) return;
+    const activeBizId = currentTenant?.businessId || currentTenant?.id || tenantId;
+    if (!activeBizId) return;
 
     setLoading(true);
     setSuccess(false);
 
     try {
-      const storeDocRef = doc(db, 'businesses', tenantId);
+      const cleanName = (formData.name || formData.businessName || 'My Store').trim();
+      const cleanRate = parseFloat(formData.exchangeRate || 198);
+
       const updates = {
         ...formData,
-        exchangeRate: parseFloat(formData.exchangeRate || 198),
-        fxRate: parseFloat(formData.exchangeRate || 198),
-        updatedAt: Timestamp.now()
+        name: cleanName,
+        businessName: cleanName,
+        category: formData.category || 'General Retail',
+        businessType: formData.category || 'General Retail',
+        exchangeRate: cleanRate,
+        fxRate: cleanRate,
+        updatedAt: new Date().toISOString()
       };
 
-      await setDoc(storeDocRef, updates, { merge: true });
+      if (updateTenantById) {
+        await updateTenantById(activeBizId, updates);
+      } else if (updateTenant) {
+        await updateTenant(updates);
+      } else {
+        await setDoc(doc(db, 'businesses', activeBizId), updates, { merge: true });
+      }
+
       if (updateCurrencySettings) {
         await updateCurrencySettings(updates);
       }

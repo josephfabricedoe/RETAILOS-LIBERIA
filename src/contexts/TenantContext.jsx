@@ -198,28 +198,46 @@ export function TenantProvider({ children, currentUser }) {
 
   // Update current tenant configuration
   const updateTenant = async (fields) => {
-    const bizId = currentTenant?.businessId || currentTenantId || 'default';
-    await setDoc(doc(db, 'businesses', bizId), {
-      ...fields,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
-    setCurrentTenant(prev => ({ ...prev, ...fields }));
+    const bizId = currentTenant?.businessId || currentTenant?.id || currentTenantId || 'default';
+    return updateTenantById(bizId, fields);
   };
 
-  // Update specific tenant configuration (for Super Admin dashboard)
+  // Update specific tenant configuration (for Super Admin dashboard and Store Settings)
   const updateTenantById = async (targetBizId, fields) => {
     if (!targetBizId) return;
+
+    // Normalize field pairs so any component reading either key gets the update
+    const normalized = { ...fields };
+    if (normalized.name && !normalized.businessName) {
+      normalized.businessName = normalized.name;
+    }
+    if (normalized.businessName && !normalized.name) {
+      normalized.name = normalized.businessName;
+    }
+    if (normalized.category && !normalized.businessType) {
+      normalized.businessType = normalized.category;
+    }
+    if (normalized.businessType && !normalized.category) {
+      normalized.category = normalized.businessType;
+    }
+    if (normalized.exchangeRate !== undefined && normalized.fxRate === undefined) {
+      normalized.fxRate = Number(normalized.exchangeRate);
+    }
+    if (normalized.fxRate !== undefined && normalized.exchangeRate === undefined) {
+      normalized.exchangeRate = Number(normalized.fxRate);
+    }
+    normalized.updatedAt = new Date().toISOString();
 
     // 1. Instantly update allTenants in memory so UI changes on the spot
     setAllTenants(prev => prev.map(t => {
       const match = (t.businessId === targetBizId || t.id === targetBizId || t.slug === targetBizId);
-      return match ? { ...t, ...fields } : t;
+      return match ? { ...t, ...normalized } : t;
     }));
 
     // 2. Instantly update currentTenant if matching
     setCurrentTenant(prev => {
       const match = (prev?.businessId === targetBizId || prev?.id === targetBizId || prev?.slug === targetBizId);
-      return match ? { ...prev, ...fields } : prev;
+      return match ? { ...prev, ...normalized } : prev;
     });
 
     // 3. Update localStorage cache
@@ -227,7 +245,7 @@ export function TenantProvider({ children, currentUser }) {
       const locals = getLocalTenants();
       const updated = locals.map(t => {
         const match = (t.businessId === targetBizId || t.id === targetBizId || t.slug === targetBizId);
-        return match ? { ...t, ...fields } : t;
+        return match ? { ...t, ...normalized } : t;
       });
       localStorage.setItem('retailos_local_tenants', JSON.stringify(updated));
     } catch (e) {}
@@ -235,7 +253,7 @@ export function TenantProvider({ children, currentUser }) {
     // 4. Save to Firestore in cloud
     try {
       await setDoc(doc(db, 'businesses', targetBizId), {
-        ...fields,
+        ...normalized,
         updatedAt: serverTimestamp(),
       }, { merge: true });
     } catch (err) {
@@ -248,11 +266,18 @@ export function TenantProvider({ children, currentUser }) {
     const slug = newStoreData.slug || newStoreData.businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const businessId = newStoreData.businessId || `biz_${slug}_${Date.now().toString().slice(-4)}`;
 
+    const name = newStoreData.businessName || newStoreData.name || 'Store';
+    const rate = Number(newStoreData.exchangeRate || newStoreData.fxRate) || 198;
+
     const fullRecord = {
+      ...newStoreData,
+      id: businessId,
       businessId,
-      businessName: newStoreData.businessName,
+      name,
+      businessName: name,
       slug,
-      businessType: newStoreData.businessType || 'General Retail',
+      category: newStoreData.businessType || newStoreData.category || 'General Retail',
+      businessType: newStoreData.businessType || newStoreData.category || 'General Retail',
       ownerName: newStoreData.ownerName || '',
       ownerEmail: newStoreData.ownerEmail || '',
       ownerPhone: newStoreData.ownerPhone || '',
@@ -260,14 +285,17 @@ export function TenantProvider({ children, currentUser }) {
       logoUrl: newStoreData.logoUrl || '',
       themeColor: newStoreData.themeColor || '#0ea5e9',
       defaultCurrency: newStoreData.defaultCurrency || 'USD',
-      exchangeRate: Number(newStoreData.exchangeRate) || 198,
+      primaryCurrency: newStoreData.primaryCurrency || newStoreData.defaultCurrency || 'USD',
+      secondaryCurrency: newStoreData.secondaryCurrency || 'LRD',
+      exchangeRate: rate,
+      fxRate: rate,
       address: newStoreData.address || 'Monrovia, Liberia',
       phone: newStoreData.phone || newStoreData.ownerPhone || '',
       whatsappNumber: newStoreData.whatsappNumber || '',
       subscriptionPlan: newStoreData.subscriptionPlan || 'starter',
       subscriptionStatus: newStoreData.subscriptionStatus || 'trial',
-      trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      createdAt: new Date().toISOString().slice(0, 10),
+      trialEndsAt: newStoreData.trialEndsAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      createdAt: newStoreData.createdAt || new Date().toISOString().slice(0, 10),
     };
 
     try {
