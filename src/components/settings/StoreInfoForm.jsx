@@ -16,7 +16,8 @@ import {
   Sparkles,
   Trash2,
   Globe,
-  Tag
+  Tag,
+  ShieldCheck
 } from 'lucide-react';
 import { useTenant } from '../../contexts/TenantContext';
 import { useApp } from '../../contexts/AppContext';
@@ -47,6 +48,7 @@ export default function StoreInfoForm() {
     tagline: currentTenant?.tagline || currentStore?.tagline || '',
     phone: currentTenant?.phone || currentTenant?.ownerPhone || currentStore?.phone || '',
     whatsappNumber: currentTenant?.whatsappNumber || currentTenant?.phone || currentStore?.phone || '',
+    tin: currentTenant?.tin || currentStore?.tin || '',
     address: currentTenant?.address || currentStore?.address || '',
     logoUrl: currentTenant?.logoUrl || currentStore?.logoUrl || '',
     themeColor: currentTenant?.themeColor || currentStore?.themeColor || '#10b981',
@@ -74,6 +76,7 @@ export default function StoreInfoForm() {
       tagline: s.tagline !== undefined ? s.tagline : prev.tagline,
       phone: s.phone || s.ownerPhone || prev.phone,
       whatsappNumber: s.whatsappNumber || s.phone || s.ownerPhone || prev.whatsappNumber,
+      tin: s.tin !== undefined ? s.tin : prev.tin,
       address: s.address !== undefined ? s.address : prev.address,
       logoUrl: s.logoUrl !== undefined ? s.logoUrl : prev.logoUrl,
       themeColor: s.themeColor || prev.themeColor,
@@ -413,6 +416,28 @@ export default function StoreInfoForm() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Liberia Revenue Authority (LRA) Taxpayer Identification Number (TIN) */}
+        <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-2">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
+            <label className="font-bold text-xs text-slate-800 uppercase tracking-wide">
+              Liberia Revenue Authority (LRA) Tax Identification Number (TIN)
+            </label>
+          </div>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="e.g. 500123456"
+              value={formData.tin}
+              onChange={(e) => setFormData({ ...formData, tin: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-900 uppercase focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            />
+          </div>
+          <p className="text-[11px] text-slate-500">
+            Official business TIN displayed on your <strong>LRA Sales Tax &amp; GST Readiness Returns</strong>, invoice headers, and audit statements.
+          </p>
         </div>
 
         {/* Currency Configuration Section */}

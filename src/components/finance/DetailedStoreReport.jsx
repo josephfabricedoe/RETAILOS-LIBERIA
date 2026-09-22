@@ -4,7 +4,7 @@ import { useCurrency } from '../../hooks/useCurrency';
 import { useTenant } from '../../contexts/TenantContext';
 import { exportQuickBooksJournalEntries } from '../../utils/exportCsv';
 
-export default function DetailedStoreReport({ sales = [], expenses = [], products = [] }) {
+export default function DetailedStoreReport({ sales = [], expenses = [], products = [], bills = [] }) {
   const { formatUSD, formatLRD, fxRate } = useCurrency();
   const { currentStore } = useTenant();
 
@@ -143,6 +143,7 @@ _Generated via RetailOS Liberia Multi-Tenant Platform_`;
               sales,
               expenses,
               products,
+              bills,
               storeName: currentStore?.name || 'Retail Store',
               fxRate: fxRate || 198,
               dateLabel: new Date().toISOString().slice(0, 10)

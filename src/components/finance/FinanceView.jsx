@@ -62,6 +62,7 @@ export default function FinanceView() {
   // Scoped tenant collections
   const { docs: allSales, loading: salesLoading } = useTenantCollection('sales');
   const { docs: allExpenses, loading: expLoading } = useTenantCollection('expenses');
+  const { docs: allBills } = useTenantCollection('bills');
   const { docs: products } = useTenantCollection('products');
 
   // Filter sales and expenses by date filter
@@ -185,6 +186,7 @@ export default function FinanceView() {
               sales: filteredSales,
               expenses: filteredExpenses,
               products,
+              bills: allBills,
               storeName: currentStore?.name || 'Retail Store',
               fxRate: currentStore?.exchangeRate || currentStore?.fxRate || 198,
               dateLabel: dateFilter
@@ -402,7 +404,11 @@ export default function FinanceView() {
         ) : (
           <CashReconciliation 
             sales={filteredSales} 
-            expenses={filteredExpenses.reduce((acc, e) => acc + Number(e.amount || 0), 0)}
+            expenses={filteredExpenses.reduce((acc, e) => {
+              const amt = Number(e.amount || 0);
+              const rate = currentStore?.exchangeRate || 198;
+              return acc + (e.currency === 'LRD' ? amt / rate : amt);
+            }, 0)}
           />
         )
       )}
@@ -415,6 +421,7 @@ export default function FinanceView() {
             sales={filteredSales}
             expenses={filteredExpenses}
             products={products}
+            bills={allBills}
           />
         )
       )}

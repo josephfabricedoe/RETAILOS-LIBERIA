@@ -52,12 +52,13 @@ export function exportQuickBooksJournalEntries({
   sales = [],
   expenses = [],
   products = [],
+  bills = [],
   storeName = 'Retail Store',
   fxRate = 198,
   dateLabel = ''
 }) {
-  if ((!sales || !sales.length) && (!expenses || !expenses.length)) {
-    alert('No sales or expense transactions recorded in this period to export.');
+  if ((!sales || !sales.length) && (!expenses || !expenses.length) && (!bills || !bills.length)) {
+    alert('No sales, expense, or supplier bill transactions recorded in this period to export.');
     return;
   }
 
@@ -93,7 +94,8 @@ export function exportQuickBooksJournalEntries({
         discounts: 0,
         grossSales: 0,
         cogs: 0,
-        expenses: []
+        expenses: [],
+        bills: []
       };
     }
 
@@ -137,7 +139,8 @@ export function exportQuickBooksJournalEntries({
         discounts: 0,
         grossSales: 0,
         cogs: 0,
-        expenses: []
+        expenses: [],
+        bills: []
       };
     }
     const amtUSD = e.currency === 'LRD' ? (Number(e.amount || 0) / fxRate) : Number(e.amount || 0);
@@ -145,6 +148,31 @@ export function exportQuickBooksJournalEntries({
       category: e.category || 'General Operating',
       amount: amtUSD,
       note: e.note || e.description || e.category || 'Operating expense'
+    });
+  });
+
+  // Process Supplier Bills (Accounts Payable)
+  (bills || []).forEach((b) => {
+    const dStr = getDayString(b.dueDate || b.createdAt);
+    if (!dateMap[dStr]) {
+      dateMap[dStr] = {
+        cash: 0,
+        momo: 0,
+        orange: 0,
+        credit: 0,
+        other: 0,
+        discounts: 0,
+        grossSales: 0,
+        cogs: 0,
+        expenses: [],
+        bills: []
+      };
+    }
+    if (!dateMap[dStr].bills) dateMap[dStr].bills = [];
+    const amtUSD = b.currency === 'LRD' ? (Number(b.amount || 0) / fxRate) : Number(b.amount || 0);
+    dateMap[dStr].bills.push({
+      ...b,
+      amountUSD: amtUSD
     });
   });
 
@@ -282,6 +310,63 @@ export function exportQuickBooksJournalEntries({
           memo: `Cash drawer payout for ${exp.category}`,
           store: storeName
         });
+      });
+    }
+
+    // 4. Supplier Accounts Payable (A/P) Entries
+    if (day.bills && day.bills.length > 0) {
+      day.bills.forEach((bill) => {
+        const billJrn = `JRN-${dStr.replace(/-/g, '')}-${journalCounter++}`;
+        if (bill.status === 'paid') {
+          // Paid bill: Debit Accounts Payable, Credit Cash or Mobile Money
+          journalRows.push({
+            journalNo: billJrn,
+            date: dStr,
+            accountName: 'Accounts Payable (Supplier A/P)',
+            accountType: 'Accounts Payable (Current Liability)',
+            debit: bill.amountUSD.toFixed(2),
+            credit: '0.00',
+            memo: `Settled Bill #${bill.invoiceNumber || 'INV'} to ${bill.supplierName}`,
+            store: storeName
+          });
+          const payAcc = (bill.paymentMethod || '').toLowerCase().includes('momo')
+            ? 'MTN Mobile Money Clearing'
+            : (bill.paymentMethod || '').toLowerCase().includes('orange')
+            ? 'Orange Money Clearing'
+            : 'Cash on Hand (Store Drawer)';
+          journalRows.push({
+            journalNo: billJrn,
+            date: dStr,
+            accountName: payAcc,
+            accountType: 'Bank / Current Asset',
+            debit: '0.00',
+            credit: bill.amountUSD.toFixed(2),
+            memo: `Disbursement to vendor ${bill.supplierName} (${bill.paymentMethod || 'Cash'})`,
+            store: storeName
+          });
+        } else {
+          // Unpaid bill accrual: Debit Inventory / Expense, Credit Accounts Payable
+          journalRows.push({
+            journalNo: billJrn,
+            date: dStr,
+            accountName: `Accounts Payable: ${bill.category || 'Vendor Invoices'}`,
+            accountType: 'Expense / Current Asset',
+            debit: bill.amountUSD.toFixed(2),
+            credit: '0.00',
+            memo: `Accrued payable #${bill.invoiceNumber || 'INV'} to ${bill.supplierName} (Due: ${bill.dueDate || 'Upon receipt'})`,
+            store: storeName
+          });
+          journalRows.push({
+            journalNo: billJrn,
+            date: dStr,
+            accountName: 'Accounts Payable (Supplier A/P)',
+            accountType: 'Accounts Payable (Current Liability)',
+            debit: '0.00',
+            credit: bill.amountUSD.toFixed(2),
+            memo: `Vendor liability payable to ${bill.supplierName}`,
+            store: storeName
+          });
+        }
       });
     }
   });

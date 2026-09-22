@@ -95,15 +95,38 @@ export async function syncPendingSales(tenantId, getTenantCol, getTenantDoc) {
           }
         }
 
-        // Update customer credit/debt balance if applicable
-        if (sale.customerId && sale.balanceOwed > 0) {
+        // Update customer credit/debt balance and loyalty points
+        if (sale.customerId) {
           try {
-            await updateDoc(getTenantDoc('customers', sale.customerId), {
-              currentDebt: increment(sale.balanceOwed),
-              totalPurchases: increment(sale.total || 0),
-            });
+            if (String(sale.customerId).startsWith('cust_')) {
+              // Newly entered customer at POS checkout - create new customer record
+              await addDoc(getTenantCol('customers'), {
+                name: sale.customerName || 'Customer',
+                phone: sale.customerPhone || '',
+                outstandingDebtUSD: Number(sale.balanceOwed || 0),
+                currentDebt: Number(sale.balanceOwed || 0),
+                loyaltyPoints: Math.floor(Number(sale.amountPaid || sale.total || 0)),
+                totalPurchases: Number(sale.total || 0),
+                lastDebtDate: sale.balanceOwed > 0 ? new Date().toISOString() : null,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+              });
+            } else {
+              // Existing customer - update debt, points, and aging timestamp
+              const updatePayload = {
+                totalPurchases: increment(Number(sale.total || 0)),
+                loyaltyPoints: increment(Math.floor(Number(sale.amountPaid || sale.total || 0))),
+                updatedAt: serverTimestamp()
+              };
+              if (sale.balanceOwed > 0) {
+                updatePayload.outstandingDebtUSD = increment(Number(sale.balanceOwed));
+                updatePayload.currentDebt = increment(Number(sale.balanceOwed));
+                updatePayload.lastDebtDate = new Date().toISOString();
+              }
+              await updateDoc(getTenantDoc('customers', sale.customerId), updatePayload);
+            }
           } catch (cErr) {
-            console.warn('Customer debt notice:', cErr);
+            console.warn('Customer debt & points sync notice:', cErr);
           }
         }
       })();

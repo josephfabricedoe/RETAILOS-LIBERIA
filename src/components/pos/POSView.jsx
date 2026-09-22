@@ -605,13 +605,18 @@ export default function POSView() {
                 <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                   Payment Method
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['Cash', 'Mobile Money (MoMo)', 'Card / POS'].map(m => (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {['Cash', 'Mobile Money (MoMo)', 'Card / POS', 'Store Credit / Tab'].map(m => (
                     <button
                       key={m}
                       type="button"
-                      onClick={() => setPaymentMethod(m)}
-                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center ${
+                      onClick={() => {
+                        setPaymentMethod(m);
+                        if (m === 'Store Credit / Tab') {
+                          setAmountPaid('0');
+                        }
+                      }}
+                      className={`py-2 px-2.5 rounded-xl border text-[11px] font-bold transition-all text-center ${
                         paymentMethod === m
                           ? 'bg-emerald-50 text-emerald-800 border-2 border-emerald-600 shadow-2xs'
                           : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
