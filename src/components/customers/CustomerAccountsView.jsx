@@ -12,8 +12,11 @@ import {
   CheckCircle2, 
   X,
   AlertCircle,
+  AlertTriangle,
   History,
-  TrendingUp
+  TrendingUp,
+  Clock,
+  Calendar
 } from 'lucide-react';
 import { useTenantCollection } from '../../hooks/useTenantFirestore';
 import { useTenant } from '../../contexts/TenantContext';
@@ -26,10 +29,65 @@ export default function CustomerAccountsView() {
   const { docs: customers, loading } = useTenantCollection('customers');
 
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('ALL'); // ALL, DEBTORS, VIPS
+  const [filter, setFilter] = useState('ALL'); // ALL, DEBTORS, CURRENT, AGING, DELINQUENT, VIPS
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  // Helper: calculate aging bracket for debtors
+  const getCustomerAging = (cust) => {
+    const debt = Number(cust.outstandingDebtUSD || 0);
+    if (debt <= 0) return { days: 0, bucket: 'cleared', label: 'Cleared', color: 'emerald' };
+
+    const dateVal = cust.lastDebtDate || cust.updatedAt?.toDate?.() || (cust.updatedAt ? new Date(cust.updatedAt) : null) || cust.createdAt?.toDate?.() || (cust.createdAt ? new Date(cust.createdAt) : null);
+    const timestamp = dateVal ? new Date(dateVal).getTime() : Date.now();
+    const days = Math.max(0, Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24)));
+
+    if (days <= 14) {
+      return { 
+        days, 
+        bucket: 'current', 
+        label: '0–14 Days (Current)', 
+        color: 'emerald', 
+        badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+      };
+    } else if (days <= 30) {
+      return { 
+        days, 
+        bucket: 'aging', 
+        label: `${days}d (15–30 Days Due)`, 
+        color: 'amber', 
+        badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' 
+      };
+    } else {
+      return { 
+        days, 
+        bucket: 'delinquent', 
+        label: `${days}d (30+ Days Overdue)`, 
+        color: 'rose', 
+        badgeClass: 'bg-rose-50 text-rose-700 border-rose-300 font-bold' 
+      };
+    }
+  };
+
+  // Aging Summary Metrics
+  const agingSummary = customers.reduce((acc, c) => {
+    const debt = Number(c.outstandingDebtUSD || 0);
+    if (debt > 0) {
+      const aging = getCustomerAging(c);
+      if (aging.bucket === 'current') {
+        acc.currentUSD += debt;
+        acc.currentCount += 1;
+      } else if (aging.bucket === 'aging') {
+        acc.agingUSD += debt;
+        acc.agingCount += 1;
+      } else if (aging.bucket === 'delinquent') {
+        acc.delinquentUSD += debt;
+        acc.delinquentCount += 1;
+      }
+    }
+    return acc;
+  }, { currentUSD: 0, currentCount: 0, agingUSD: 0, agingCount: 0, delinquentUSD: 0, delinquentCount: 0 });
 
   // New Customer Form State
   const [newCustomer, setNewCustomer] = useState({
@@ -54,7 +112,13 @@ export default function CustomerAccountsView() {
       (c.phone && c.phone.includes(search));
 
     if (!matchSearch) return false;
-    if (filter === 'DEBTORS') return Number(c.outstandingDebtUSD || 0) > 0;
+    const debt = Number(c.outstandingDebtUSD || 0);
+    const aging = getCustomerAging(c);
+
+    if (filter === 'DEBTORS') return debt > 0;
+    if (filter === 'CURRENT') return debt > 0 && aging.bucket === 'current';
+    if (filter === 'AGING') return debt > 0 && aging.bucket === 'aging';
+    if (filter === 'DELINQUENT') return debt > 0 && aging.bucket === 'delinquent';
     if (filter === 'VIPS') return Number(c.loyaltyPoints || 0) >= 100;
     return true;
   });
@@ -133,7 +197,17 @@ export default function CustomerAccountsView() {
     const storeName = currentStore?.name || 'our store';
     const debt = formatUSD(customer.outstandingDebtUSD || 0);
     const debtLRD = formatLRD((customer.outstandingDebtUSD || 0) * fxRate);
-    const message = `Hello ${customer.name}, friendly reminder from *${storeName}* regarding your store credit balance of *${debt}* (${debtLRD}). Please let us know when convenient to settle or send via Mobile Money. Thank you!`;
+    const aging = getCustomerAging(customer);
+
+    let message = '';
+    if (aging.days > 30) {
+      message = `Hello ${customer.name}, urgent follow-up from *${storeName}*. Your store credit balance of *${debt}* (${debtLRD}) is currently ${aging.days} days overdue. Kindly arrange settlement or send via Mobile Money today. Thank you!`;
+    } else if (aging.days > 14) {
+      message = `Hello ${customer.name}, friendly reminder from *${storeName}*. Your store credit balance of *${debt}* (${debtLRD}) has been outstanding for ${aging.days} days. Please settle at your earliest convenience or via Mobile Money. Thank you!`;
+    } else {
+      message = `Hello ${customer.name}, friendly update from *${storeName}* regarding your current store credit balance of *${debt}* (${debtLRD}). Please let us know when convenient to settle or send via Mobile Money. Thank you!`;
+    }
+
     const cleanPhone = (customer.phone || '').replace(/[^0-9]/g, '');
     window.open(`https://wa.me/${cleanPhone.startsWith('231') ? cleanPhone : '231' + cleanPhone.replace(/^0/, '')}?text=${encodeURIComponent(message)}`, '_blank');
   };
@@ -193,6 +267,102 @@ export default function CustomerAccountsView() {
         </div>
       </div>
 
+      {/* A/R Aging Schedule Report Bar (QuickBooks-Grade) */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-slate-700" />
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">
+              Accounts Receivable (A/R) Aging Schedule
+            </h2>
+            <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+              Collections
+            </span>
+          </div>
+          <p className="text-xs text-slate-500">
+            Categorized customer debt age with 1-click WhatsApp reminders
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Current: 0-14 Days */}
+          <div 
+            onClick={() => setFilter(filter === 'CURRENT' ? 'ALL' : 'CURRENT')}
+            className={`p-3.5 rounded-xl border cursor-pointer transition ${
+              filter === 'CURRENT' 
+                ? 'bg-emerald-50/80 border-emerald-400 ring-2 ring-emerald-500/20' 
+                : 'bg-emerald-50/30 border-emerald-100 hover:bg-emerald-50/60'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">
+                0–14 Days (Current)
+              </span>
+              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                {agingSummary.currentCount}
+              </span>
+            </div>
+            <div className="text-lg font-black text-emerald-900 mt-1">
+              {formatUSD(agingSummary.currentUSD)}
+            </div>
+            <div className="text-[10px] text-emerald-700 font-medium">
+              {formatLRD(agingSummary.currentUSD * fxRate)} • On-schedule tabs
+            </div>
+          </div>
+
+          {/* Aging: 15-30 Days */}
+          <div 
+            onClick={() => setFilter(filter === 'AGING' ? 'ALL' : 'AGING')}
+            className={`p-3.5 rounded-xl border cursor-pointer transition ${
+              filter === 'AGING' 
+                ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-500/20' 
+                : 'bg-amber-50/30 border-amber-200/60 hover:bg-amber-50/60'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider">
+                15–30 Days (Due)
+              </span>
+              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                {agingSummary.agingCount}
+              </span>
+            </div>
+            <div className="text-lg font-black text-amber-900 mt-1">
+              {formatUSD(agingSummary.agingUSD)}
+            </div>
+            <div className="text-[10px] text-amber-700 font-medium">
+              {formatLRD(agingSummary.agingUSD * fxRate)} • Follow-up recommended
+            </div>
+          </div>
+
+          {/* Delinquent: 30+ Days */}
+          <div 
+            onClick={() => setFilter(filter === 'DELINQUENT' ? 'ALL' : 'DELINQUENT')}
+            className={`p-3.5 rounded-xl border cursor-pointer transition ${
+              filter === 'DELINQUENT' 
+                ? 'bg-rose-50 border-rose-400 ring-2 ring-rose-500/20' 
+                : 'bg-rose-50/30 border-rose-200/60 hover:bg-rose-50/60'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-rose-800 uppercase tracking-wider flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 text-rose-600" />
+                30+ Days (Overdue)
+              </span>
+              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-rose-100 text-rose-800">
+                {agingSummary.delinquentCount}
+              </span>
+            </div>
+            <div className="text-lg font-black text-rose-900 mt-1">
+              {formatUSD(agingSummary.delinquentUSD)}
+            </div>
+            <div className="text-[10px] text-rose-700 font-medium">
+              {formatLRD(agingSummary.delinquentUSD * fxRate)} • High collection priority
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Filters & Search */}
       <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="relative flex-1 w-full sm:w-80">
@@ -206,7 +376,7 @@ export default function CustomerAccountsView() {
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center flex-wrap gap-2 w-full sm:w-auto">
           <button
             onClick={() => setFilter('ALL')}
             className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
@@ -221,12 +391,36 @@ export default function CustomerAccountsView() {
               filter === 'DEBTORS' ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
             }`}
           >
-            Has Debt ({customers.filter((c) => Number(c.outstandingDebtUSD || 0) > 0).length})
+            All Debtors ({customers.filter((c) => Number(c.outstandingDebtUSD || 0) > 0).length})
+          </button>
+          <button
+            onClick={() => setFilter('CURRENT')}
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
+              filter === 'CURRENT' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+            }`}
+          >
+            0–14d ({agingSummary.currentCount})
+          </button>
+          <button
+            onClick={() => setFilter('AGING')}
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
+              filter === 'AGING' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+            }`}
+          >
+            15–30d ({agingSummary.agingCount})
+          </button>
+          <button
+            onClick={() => setFilter('DELINQUENT')}
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
+              filter === 'DELINQUENT' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+            }`}
+          >
+            30+d Overdue ({agingSummary.delinquentCount})
           </button>
           <button
             onClick={() => setFilter('VIPS')}
             className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
-              filter === 'VIPS' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+              filter === 'VIPS' ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
             }`}
           >
             VIP Loyalty ({customers.filter((c) => Number(c.loyaltyPoints || 0) >= 100).length})
@@ -257,6 +451,8 @@ export default function CustomerAccountsView() {
               filteredCustomers.map((cust) => {
                 const debt = Number(cust.outstandingDebtUSD || 0);
                 const points = Number(cust.loyaltyPoints || 0);
+                const aging = getCustomerAging(cust);
+
                 return (
                   <tr key={cust.id} className="hover:bg-slate-50/70 transition">
                     <td className="py-3 px-4">
@@ -282,8 +478,14 @@ export default function CustomerAccountsView() {
                     <td className="py-3 px-4 text-right">
                       {debt > 0 ? (
                         <div>
-                          <span className="font-bold text-red-600">{formatUSD(debt)}</span>
+                          <div className="font-bold text-red-600">{formatUSD(debt)}</div>
                           <div className="text-[10px] text-slate-400">{formatLRD(debt * fxRate)}</div>
+                          <div className="mt-1">
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold border ${aging.badgeClass}`}>
+                              {aging.bucket === 'delinquent' && <AlertTriangle className="w-2.5 h-2.5 text-rose-600" />}
+                              {aging.label}
+                            </span>
+                          </div>
                         </div>
                       ) : (
                         <span className="text-emerald-600 font-semibold">Cleared ($0.00)</span>
@@ -306,8 +508,14 @@ export default function CustomerAccountsView() {
                             {cust.phone && (
                               <button
                                 onClick={() => handleSendWhatsAppReminder(cust)}
-                                className="p-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition"
-                                title="Send WhatsApp Reminder"
+                                className={`p-1.5 rounded-lg transition flex items-center gap-1 ${
+                                  aging.days > 30 
+                                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200' 
+                                    : aging.days > 14 
+                                    ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200' 
+                                    : 'bg-green-50 hover:bg-green-100 text-green-700 border border-green-200'
+                                }`}
+                                title={`Send ${aging.label} WhatsApp Debt Reminder`}
                               >
                                 <MessageCircle className="w-4 h-4" />
                               </button>

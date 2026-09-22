@@ -55,6 +55,45 @@ export default function DetailedStoreReport({ sales = [], expenses = [], product
   const netProfitUSD = grossProfitUSD - totalExpensesUSD;
   const netMarginPct = netSalesUSD > 0 ? Math.round((netProfitUSD / netSalesUSD) * 100) : 0;
 
+  // 5. Category Profit Margin Leaderboard (Class P&L)
+  const productCategoryMap = {};
+  products.forEach((p) => {
+    const cat = p.category || 'General Merchandise';
+    if (p.id) productCategoryMap[p.id] = cat;
+    if (p.name) productCategoryMap[p.name.toLowerCase()] = cat;
+  });
+
+  const categoryPerformance = {};
+  sales.forEach((s) => {
+    if (Array.isArray(s.items)) {
+      s.items.forEach((item) => {
+        const cat = item.category || productCategoryMap[item.id] || (item.name && productCategoryMap[item.name.toLowerCase()]) || 'General Merchandise';
+        const qty = Number(item.quantity || 1);
+        const itemPrice = Number(item.priceUSD || item.price || 0);
+        const revenue = Number(item.totalUSD || (itemPrice * qty) || 0);
+        const unitCost = productCostMap[item.id] || (item.name && productCostMap[item.name.toLowerCase()]) || Number(item.costPriceUSD || 0) || (itemPrice * 0.65);
+        const cogs = unitCost * qty;
+
+        if (!categoryPerformance[cat]) {
+          categoryPerformance[cat] = { category: cat, revenueUSD: 0, cogsUSD: 0, unitsSold: 0 };
+        }
+        categoryPerformance[cat].revenueUSD += revenue;
+        categoryPerformance[cat].cogsUSD += cogs;
+        categoryPerformance[cat].unitsSold += qty;
+      });
+    }
+  });
+
+  const categoryLeaderboard = Object.values(categoryPerformance).map((c) => {
+    const grossProfit = Math.max(0, c.revenueUSD - c.cogsUSD);
+    const marginPct = c.revenueUSD > 0 ? Math.round((grossProfit / c.revenueUSD) * 100) : 0;
+    return {
+      ...c,
+      grossProfitUSD: grossProfit,
+      marginPct
+    };
+  }).sort((a, b) => b.grossProfitUSD - a.grossProfitUSD);
+
   const handleShareWhatsApp = () => {
     const storeName = currentStore?.name || 'Retail Store';
     const text = `📊 *${storeName.toUpperCase()} - P&L Financial Report*
@@ -214,6 +253,123 @@ _Generated via RetailOS Liberia Multi-Tenant Platform_`;
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Category Profit Margin Leaderboard (QuickBooks Class / Department P&L) */}
+      <div className="border border-slate-200 rounded-3xl p-6 sm:p-7 bg-white shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold tracking-wider uppercase text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full">
+                Class / Segment P&L
+              </span>
+              <span className="text-xs font-bold text-slate-400">QuickBooks-Grade Margin Analysis</span>
+            </div>
+            <h3 className="text-lg font-black text-slate-900 mt-1">
+              Category Profit Margin Leaderboard
+            </h3>
+            <p className="text-xs text-slate-500">
+              Ranked breakdown of gross profit margins, revenue contribution, and units sold across your inventory categories.
+            </p>
+          </div>
+        </div>
+
+        {categoryLeaderboard.length === 0 ? (
+          <div className="py-10 text-center text-slate-400 text-xs">
+            No product categories with completed sales yet in this reporting window.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-100">
+                  <th className="py-3 px-4 w-12 text-center">Rank</th>
+                  <th className="py-3 px-4">Inventory Category</th>
+                  <th className="py-3 px-4 text-center">Units Sold</th>
+                  <th className="py-3 px-4 text-right">Revenue</th>
+                  <th className="py-3 px-4 text-right">Cost (COGS)</th>
+                  <th className="py-3 px-4 text-right">Gross Profit</th>
+                  <th className="py-3 px-4 w-44">Profit Margin %</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {categoryLeaderboard.map((item, idx) => {
+                  const isTop = idx === 0;
+                  const isSecond = idx === 1;
+                  const isThird = idx === 2;
+
+                  return (
+                    <tr key={item.category} className="hover:bg-slate-50/70 transition">
+                      <td className="py-3.5 px-4 text-center">
+                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-black ${
+                          isTop 
+                            ? 'bg-amber-100 text-amber-800 ring-2 ring-amber-300' 
+                            : isSecond 
+                            ? 'bg-slate-200 text-slate-800' 
+                            : isThird 
+                            ? 'bg-amber-50 text-amber-700' 
+                            : 'text-slate-400'
+                        }`}>
+                          {idx + 1}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-slate-900">{item.category}</div>
+                        {isTop && (
+                          <span className="text-[10px] text-amber-600 font-semibold">
+                            ★ Top Profit Driver
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-bold text-slate-700">
+                        {item.unitsSold.toLocaleString()}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="font-bold text-slate-900">{formatUSD(item.revenueUSD)}</div>
+                        <div className="text-[10px] text-slate-400">{formatLRD(item.revenueUSD * fxRate)}</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-medium text-slate-500">
+                        {formatUSD(item.cogsUSD)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="font-bold text-emerald-700">{formatUSD(item.grossProfitUSD)}</div>
+                        <div className="text-[10px] text-emerald-600 font-medium">{formatLRD(item.grossProfitUSD * fxRate)}</div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-[11px]">
+                            <span className="font-black text-slate-900">{item.marginPct}%</span>
+                            <span className={`text-[10px] font-semibold ${
+                              item.marginPct >= 35 
+                                ? 'text-emerald-600' 
+                                : item.marginPct >= 20 
+                                ? 'text-amber-600' 
+                                : 'text-slate-500'
+                            }`}>
+                              {item.marginPct >= 35 ? 'High Margin' : item.marginPct >= 20 ? 'Healthy' : 'Volume'}
+                            </span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                item.marginPct >= 35 
+                                  ? 'bg-emerald-500' 
+                                  : item.marginPct >= 20 
+                                  ? 'bg-amber-500' 
+                                  : 'bg-slate-400'
+                              }`} 
+                              style={{ width: `${Math.min(100, Math.max(5, item.marginPct))}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

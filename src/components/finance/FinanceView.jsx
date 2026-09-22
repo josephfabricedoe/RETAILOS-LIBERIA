@@ -11,7 +11,13 @@ import {
   Layers,
   ArrowRightLeft,
   Lock,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Camera,
+  ShieldCheck,
+  FileText,
+  X,
+  Download,
+  Eye
 } from 'lucide-react';
 import { useTenantCollection } from '../../hooks/useTenantFirestore';
 import { useTenant } from '../../contexts/TenantContext';
@@ -29,6 +35,8 @@ import CashReconciliation from './CashReconciliation';
 import ShiftHandoverModal from './ShiftHandoverModal';
 import DetailedStoreReport from './DetailedStoreReport';
 import ReceiptModal from '../pos/ReceiptModal';
+import SupplierBillsView from './SupplierBillsView';
+import LraTaxReportModal from './LraTaxReportModal';
 import { exportQuickBooksJournalEntries } from '../../utils/exportCsv';
 
 export default function FinanceView() {
@@ -37,7 +45,7 @@ export default function FinanceView() {
   const storePlan = currentTenant?.subscriptionPlan || 'starter';
   const isFreePlan = !isSuperAdmin && storePlan === 'starter';
 
-  const [activeTab, setActiveTab] = useState('overview'); // overview, transactions, expenses, drawer, pnl
+  const [activeTab, setActiveTab] = useState('overview'); // overview, transactions, expenses, bills, drawer, pnl
   const [dateFilter, setDateFilter] = useState(isFreePlan ? 'today' : 'thisMonth');
   const [customRange, setCustomRange] = useState({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
@@ -47,7 +55,9 @@ export default function FinanceView() {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showHandoverModal, setShowHandoverModal] = useState(false);
+  const [showLraModal, setShowLraModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [selectedExpenseSlip, setSelectedExpenseSlip] = useState(null);
 
   // Scoped tenant collections
   const { docs: allSales, loading: salesLoading } = useTenantCollection('sales');
@@ -97,6 +107,7 @@ export default function FinanceView() {
     { id: 'overview', label: isFreePlan ? 'Daily Sales Overview' : 'Financial Overview', icon: BarChart3 },
     { id: 'transactions', label: isFreePlan ? 'Daily Sales Inflow' : 'Sales & Receipts', icon: Receipt, badge: filteredSales.length },
     { id: 'expenses', label: 'Store Expenses', icon: Wallet, badge: isFreePlan ? undefined : filteredExpenses.length, isLocked: isFreePlan, planRequired: 'Growth' },
+    { id: 'bills', label: 'Supplier Bills (A/P)', icon: FileText, isLocked: isFreePlan, planRequired: 'Growth' },
     { id: 'drawer', label: 'Cash Drawer & Shifts', icon: ArrowRightLeft, isLocked: isFreePlan, planRequired: 'Growth' },
     { id: 'pnl', label: 'P&L Statement', icon: Layers, isLocked: isFreePlan, planRequired: 'Growth' }
   ];
@@ -126,7 +137,7 @@ export default function FinanceView() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center flex-wrap gap-2">
           <button
             onClick={() => {
               if (isFreePlan) {
@@ -155,6 +166,17 @@ export default function FinanceView() {
             {isFreePlan ? <Lock className="w-3.5 h-3.5" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
             Shift Handover
             {isFreePlan && <span className="text-[9px] bg-slate-700 px-1 py-0.2 rounded text-slate-200">Growth</span>}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowLraModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-xl shadow-xs transition"
+            title="Liberia Revenue Authority (LRA) Tax Readiness Audit & Return"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden md:inline">LRA Tax Readiness</span>
+            <span className="md:hidden">LRA Tax</span>
           </button>
 
           <button
@@ -311,13 +333,14 @@ export default function FinanceView() {
                     <th className="py-3 px-4">Category</th>
                     <th className="py-3 px-4">Description</th>
                     <th className="py-3 px-4">Logged By</th>
+                    <th className="py-3 px-4 text-center">Receipt Slip</th>
                     <th className="py-3 px-4 text-right">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredExpenses.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="py-12 text-center text-slate-400">
+                      <td colSpan="6" className="py-12 text-center text-slate-400">
                         No expenses logged for this time range.
                       </td>
                     </tr>
@@ -336,7 +359,21 @@ export default function FinanceView() {
                           {exp.description || exp.notes || '—'}
                         </td>
                         <td className="py-3 px-4 text-slate-500">
-                          {exp.loggedBy || 'Staff'}
+                          {exp.recordedBy || exp.loggedBy || 'Staff'}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {exp.receiptPhoto ? (
+                            <button
+                              onClick={() => setSelectedExpenseSlip(exp)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-[10px] font-bold border border-amber-200 transition"
+                              title="Inspect Expense Receipt Slip Photo"
+                            >
+                              <Camera className="w-3 h-3 text-amber-600" />
+                              <span>View Slip</span>
+                            </button>
+                          ) : (
+                            <span className="text-slate-300 font-mono text-[11px]">—</span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-right font-bold text-slate-900">
                           {exp.currency === 'LRD' ? `L$ ${Number(exp.amount).toLocaleString()}` : `$${Number(exp.amount).toFixed(2)}`}
@@ -348,6 +385,14 @@ export default function FinanceView() {
               </table>
             </div>
           </div>
+        )
+      )}
+
+      {activeTab === 'bills' && (
+        isFreePlan ? (
+          <PlanUpgradeLockView moduleId="bills" requiredPlan="growth" />
+        ) : (
+          <SupplierBillsView />
         )
       )}
 
@@ -396,6 +441,88 @@ export default function FinanceView() {
           isOpen={true}
           onClose={() => setSelectedReceipt(null)}
         />
+      )}
+
+      <LraTaxReportModal
+        isOpen={showLraModal}
+        onClose={() => setShowLraModal(false)}
+        sales={filteredSales}
+        expenses={filteredExpenses}
+        products={products}
+      />
+
+      {/* Expense Receipt Slip Inspection Modal */}
+      {selectedExpenseSlip && (
+        <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-amber-400" />
+                <span className="font-bold text-xs uppercase tracking-wider">Expense Receipt Voucher Slip</span>
+              </div>
+              <button
+                onClick={() => setSelectedExpenseSlip(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="rounded-2xl border border-slate-200 overflow-hidden bg-slate-950 flex items-center justify-center max-h-96">
+                <img
+                  src={selectedExpenseSlip.receiptPhoto}
+                  alt="Expense Receipt Slip"
+                  className="object-contain w-full max-h-96 rounded-2xl"
+                />
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Category:</span>
+                  <span className="font-bold text-slate-900">{selectedExpenseSlip.category || 'General'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Amount:</span>
+                  <span className="font-black text-slate-900">
+                    {selectedExpenseSlip.currency === 'LRD' ? `L$ ${Number(selectedExpenseSlip.amount).toLocaleString()}` : `$${Number(selectedExpenseSlip.amount).toFixed(2)}`}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Recorded By:</span>
+                  <span className="font-medium text-slate-700">{selectedExpenseSlip.recordedBy || selectedExpenseSlip.loggedBy || 'Staff'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Date:</span>
+                  <span className="font-mono text-slate-700">{selectedExpenseSlip.date || 'N/A'}</span>
+                </div>
+                {selectedExpenseSlip.notes && (
+                  <div className="pt-1 border-t border-slate-200 text-slate-600">
+                    <span className="font-semibold text-slate-700">Memo: </span>
+                    {selectedExpenseSlip.notes}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <a
+                  href={selectedExpenseSlip.receiptPhoto}
+                  download={`receipt-${selectedExpenseSlip.id || Date.now()}.jpg`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download Image</span>
+                </a>
+                <button
+                  onClick={() => setSelectedExpenseSlip(null)}
+                  className="px-4 py-1.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
