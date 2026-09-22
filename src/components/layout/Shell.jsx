@@ -213,20 +213,6 @@ export default function Shell({ onGoToCatalog, onGoToLanding, onSignOut }) {
                 </button>
               )}
 
-              {/* Shared Terminal Lock / Switch Staff */}
-              {isSharedTerminal && (
-                <button
-                  type="button"
-                  onClick={lockTerminalStaff}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold transition shadow-xs"
-                  title="Lock register and switch staff PIN"
-                >
-                  <Lock className="w-3.5 h-3.5 text-amber-600" />
-                  <span className="hidden sm:inline">Switch Staff</span>
-                  <span className="sm:hidden">Lock</span>
-                </button>
-              )}
-
               <CurrencyToggle />
             </>
           )}
@@ -355,9 +341,6 @@ export default function Shell({ onGoToCatalog, onGoToLanding, onSignOut }) {
           </div>
         </div>
       )}
-
-      {/* 4-Digit PIN Terminal Kiosk Lock Screen */}
-      {isTerminalLocked && <TerminalPinModal />}
 
       {/* Multi-Device QR Pairing Modal */}
       {showPairingModal && (

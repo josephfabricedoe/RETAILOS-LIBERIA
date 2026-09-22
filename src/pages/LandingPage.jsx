@@ -184,9 +184,9 @@ export default function LandingPage({ onGoToLogin }) {
                 <div className="w-12 h-12 rounded-2xl bg-teal-100 border border-teal-300 flex items-center justify-center text-teal-700 shadow-2xs">
                   <Lock className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-black text-slate-900">4-Digit PIN Terminal Kiosk</h3>
+                <h3 className="text-lg font-black text-slate-900">Dedicated Cashier Logins</h3>
                 <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                  Staff sign in via shared tablet or PC using a fast 4-digit PIN. Automatically records morning clock-in times and protects owner settings from staff tampering.
+                  Each cashier signs in with their dedicated email &amp; password. Automatically restricts staff exclusively to POS register ringing while protecting owner financials and store settings.
                 </p>
               </div>
 

@@ -8,7 +8,6 @@ import {
   Sparkles, 
   Package, 
   Settings, 
-  UserCheck, 
   ShoppingCart, 
   Smartphone, 
   Trash2, 
@@ -27,7 +26,6 @@ export default function LaunchpadChecklist() {
 
   const { docs: products } = useTenantCollection('products');
   const { docs: sales } = useTenantCollection('sales');
-  const { docs: staff } = useTenantCollection('staff');
 
   const [collapsed, setCollapsed] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -66,7 +64,6 @@ export default function LaunchpadChecklist() {
     currentTenant?.address
   );
   const hasProducts = (products?.length || 0) >= 3;
-  const hasStaff = (staff?.length || 0) >= 1;
   const hasSale = (sales?.length || 0) >= 1;
   const isInstalled = typeof window !== 'undefined' && (
     window.matchMedia('(display-mode: standalone)').matches ||
@@ -93,15 +90,6 @@ export default function LaunchpadChecklist() {
       action: () => setActiveModule('inventory'),
       buttonText: 'Open Inventory Stock',
       icon: Package
-    },
-    {
-      id: 'staff',
-      label: 'Create Cashier PIN',
-      desc: hasStaff ? `${staff.length} staff member active` : 'Secure your POS register with 4-digit staff PINs',
-      done: hasStaff,
-      action: () => setActiveModule('staff'),
-      buttonText: 'Add Staff Member',
-      icon: UserCheck
     },
     {
       id: 'pos',

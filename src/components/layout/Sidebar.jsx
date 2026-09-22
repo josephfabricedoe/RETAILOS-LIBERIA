@@ -254,18 +254,6 @@ export default function Sidebar({ onSignOut }) {
           </div>
         </div>
 
-        {/* Shared Terminal Lock */}
-        {isSharedTerminal && (
-          <button
-            onClick={lockTerminalStaff}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 font-medium transition-colors ${!isSidebarOpen ? 'justify-center' : ''}`}
-            title="Lock register and switch staff PIN"
-          >
-            <Lock className="w-4 h-4 flex-shrink-0 text-amber-600" />
-            {isSidebarOpen && <span>Switch Staff</span>}
-          </button>
-        )}
-
         {/* Sign Out */}
         <button
           onClick={handleLogout}
