@@ -10,7 +10,8 @@ import {
   Calendar,
   Layers,
   ArrowRightLeft,
-  Lock
+  Lock,
+  FileSpreadsheet
 } from 'lucide-react';
 import { useTenantCollection } from '../../hooks/useTenantFirestore';
 import { useTenant } from '../../contexts/TenantContext';
@@ -28,6 +29,7 @@ import CashReconciliation from './CashReconciliation';
 import ShiftHandoverModal from './ShiftHandoverModal';
 import DetailedStoreReport from './DetailedStoreReport';
 import ReceiptModal from '../pos/ReceiptModal';
+import { exportQuickBooksJournalEntries } from '../../utils/exportCsv';
 
 export default function FinanceView() {
   const { currentStore, currentTenant } = useTenant();
@@ -153,6 +155,24 @@ export default function FinanceView() {
             {isFreePlan ? <Lock className="w-3.5 h-3.5" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
             Shift Handover
             {isFreePlan && <span className="text-[9px] bg-slate-700 px-1 py-0.2 rounded text-slate-200">Growth</span>}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => exportQuickBooksJournalEntries({
+              sales: filteredSales,
+              expenses: filteredExpenses,
+              products,
+              storeName: currentStore?.name || 'Retail Store',
+              fxRate: currentStore?.exchangeRate || currentStore?.fxRate || 198,
+              dateLabel: dateFilter
+            })}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-xl shadow-xs transition"
+            title="Download standard General Ledger Journal Entries CSV for QuickBooks, Xero, or Excel"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="hidden md:inline">QuickBooks / GL Export</span>
+            <span className="md:hidden">Export GL</span>
           </button>
 
           <button

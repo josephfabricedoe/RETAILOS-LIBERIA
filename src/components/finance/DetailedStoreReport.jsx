@@ -2,6 +2,7 @@ import React from 'react';
 import { Share2, DollarSign, TrendingUp, TrendingDown, Layers, FileSpreadsheet, ArrowUpRight } from 'lucide-react';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useTenant } from '../../contexts/TenantContext';
+import { exportQuickBooksJournalEntries } from '../../utils/exportCsv';
 
 export default function DetailedStoreReport({ sales = [], expenses = [], products = [] }) {
   const { formatUSD, formatLRD, fxRate } = useCurrency();
@@ -96,13 +97,33 @@ _Generated via RetailOS Liberia Multi-Tenant Platform_`;
           </p>
         </div>
 
-        <button
-          onClick={handleShareWhatsApp}
-          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition"
-        >
-          <Share2 className="w-4 h-4" />
-          Share to WhatsApp
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => exportQuickBooksJournalEntries({
+              sales,
+              expenses,
+              products,
+              storeName: currentStore?.name || 'Retail Store',
+              fxRate: fxRate || 198,
+              dateLabel: new Date().toISOString().slice(0, 10)
+            })}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold shadow-md transition"
+            title="Download standard General Ledger Journal Entries CSV for QuickBooks Online, Desktop, Xero, or Excel"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <span>Export for QuickBooks (CSV)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleShareWhatsApp}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition"
+          >
+            <Share2 className="w-4 h-4" />
+            <span>Share to WhatsApp</span>
+          </button>
+        </div>
       </div>
 
       {/* High-level KPI Cards */}
